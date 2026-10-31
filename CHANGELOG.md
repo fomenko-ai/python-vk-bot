@@ -1,0 +1,28 @@
+# Changelog
+
+All notable changes will be documented here, following Keep a Changelog.
+No release has been published by this change.
+
+## Unreleased
+
+### Added
+
+- Public BotSettings based on pydantic-settings, with VK_* environment variables, explicit
+  dotenv loading and subclass extensions; Long Poll and Callback examples use settings.
+- Async Bot and Application with explicit lifecycle, ordered handlers, composable filters,
+  scoped context data and error callbacks.
+- Pydantic v2 message/event models preserving unmodeled VK fields and raw event objects.
+- Callback authentication, confirmation and an optional ASGI receiver with resource limits.
+- Bounded in-memory suppression of successfully processed duplicate events.
+- Python 3.14 package baseline and VK API 5.199 support, verified against official
+  documentation on 2026-10-31.
+- Reusable HTTPX AsyncClient sessions with explicit ownership and timeouts.
+- Asynchronous Long Poll with iterative session recovery.
+- Messaging methods with nonzero int32 random_id generation, editing by message ID or cmid,
+  and forwarding from the source conversation.
+
+### Security
+
+- Callback group/secret checks occur before event dispatch.
+- Credentials and payloads are excluded from library error logs; HTTPX request log query
+  strings are redacted to protect Long Poll keys.

@@ -1,2 +1,202 @@
+<p align="center">
+  <img src="logo.png" alt="python-vk-bot logo" width="720">
+</p>
+
 # python-vk-bot
-Asynchronous Python framework for building VK community bots, inspired by python-telegram-bot.
+
+An asynchronous framework for VK community bots, inspired by python-telegram-bot.
+Development targets **Python 3.14** and VK API **5.199**. The regression suite runs without
+network access; see [verification results](docs/development/verification.md). No release is claimed.
+
+## Installation
+
+```bash
+uv add python-vk-bot
+```
+
+### Install from this checkout
+
+```bash
+uv sync --locked
+```
+
+For the optional Callback HTTP receiver:
+
+```bash
+uv sync --locked --extra callback
+```
+
+## Long Poll bot
+
+Enable Bots Long Poll and the `message_new` event in the community settings. Configure
+its event version to match the supported API schema. Supply a community token with the
+required permissions through the environment; messaging is subject to VK's conversation
+and permission rules.
+
+```python
+import asyncio
+
+from python_vk_bot import Application, Bot, BotSettings, Context, MessageHandler, Update, filters
+
+
+async def echo(update: Update, context: Context) -> None:
+    message = update.message
+    if message is not None:
+        await context.bot.send_message(message.peer_id, message.text)
+
+
+async def main() -> None:
+    settings = BotSettings()
+    bot = Bot(settings.token, api_version=settings.api_version, timeout=settings.timeout)
+    app = Application(bot, settings.group_id)
+    app.add_handler(MessageHandler(echo, predicate=filters.TEXT))
+    await app.run_polling(wait=settings.polling_wait)
+
+
+asyncio.run(main())
+```
+
+With `VK_TOKEN` and `VK_GROUP_ID` already set, run the included example:
+
+```bash
+uv run python examples/echo.py
+```
+
+`run_polling()` is awaitable. Cancellation closes owned resources. Handlers run
+sequentially, with the first match in each numeric group. `Context` exposes `bot`,
+`user_data`, `peer_data` and `bot_data`. Use `MessageEventHandler` for button events,
+`filters.LOCATION` for messages containing geo, and `CommandHandler` for `/command` tokens.
+
+## Settings
+
+Import `BotSettings` from `python_vk_bot` or `python_vk_bot.settings`. It uses
+`pydantic-settings` to load and validate configuration when you create an instance.
+Importing the module does not read configuration or require credentials.
+
+| Field | Environment variable | Default |
+| --- | --- | --- |
+| `token` | `VK_TOKEN` | Required, nonempty `SecretStr` |
+| `group_id` | `VK_GROUP_ID` | Required, positive integer |
+| `api_version` | `VK_API_VERSION` | `"5.199"` |
+| `timeout` | `VK_TIMEOUT` | `40.0` seconds, positive and finite |
+| `polling_wait` | `VK_POLLING_WAIT` | `25` seconds, between 1 and 90 |
+
+Use environment variables directly:
+
+```python
+from python_vk_bot import BotSettings
+
+settings = BotSettings()  # Read VK_* variables; no automatic .env loading.
+```
+
+Alternatively, opt into a dotenv file and override a value for this instance:
+
+```python
+from pathlib import Path
+
+from python_vk_bot import BotSettings
+
+settings = BotSettings(_env_file=Path(".env"), timeout=15.0)
+```
+
+Explicit constructor values take precedence over environment variables, which take
+precedence over dotenv values and field defaults. Unrelated dotenv entries are ignored,
+so a project may share its `.env` with other components. Unknown constructor fields are
+also ignored; use `extra="forbid"` in a subclass if you prefer strict configuration.
+Settings only contain configuration: pass their values to `Bot`, `Application` and
+`run_polling` explicitly as shown above. Keep real tokens and `.env` out of Git.
+
+Extend the class with your project's fields:
+
+```python
+from pathlib import Path
+
+from pydantic import Field
+
+from python_vk_bot import BotSettings
+
+
+class ProjectSettings(BotSettings):
+    admin_ids: list[int] = Field(default_factory=list)
+    debug: bool = False
+
+
+settings = ProjectSettings(_env_file=Path(".env"))
+```
+
+These fields read `VK_ADMIN_IDS` (a JSON array such as `[123, 456]`) and `VK_DEBUG`
+(for example, `true`). Override `model_config` with `SettingsConfigDict(env_prefix="MYBOT_")`
+to use another prefix. A field with `Field(validation_alias="DATABASE_URL")` instead reads
+that exact variable name, without the prefix. Token values remain `SecretStr` and can be
+passed directly to `Bot`.
+
+## Bot without polling
+
+```python
+async with Bot(token) as bot:
+    user = await bot.get_user_info(user_id)
+```
+
+An injected `httpx.AsyncClient` remains caller-owned. Methods cover sending, editing,
+forwarding, fetching a message/user, answering message events, and obtaining Long Poll
+connection data. `Bot.request(method, parameters)` exposes raw JSON results for additional
+VK methods; nested request parameters must be JSON encoded explicitly.
+
+Messages use `peer_id`; `Message` exposes both `id` and `conversation_message_id`.
+`send_message` returns an integer message ID and accepts an optional nonzero int32
+`random_id`. Sends are never retried automatically. `edit_message` accepts exactly one
+message identifier and maps `conversation_message_id` to VK's `cmid` parameter.
+
+## Callback API
+
+The [Callback example](examples/callback.py) extends the same base settings with its
+required secrets. For example, to construct a receiver from the environment:
+
+```python
+from pydantic import Field, SecretStr
+
+from python_vk_bot import Application, Bot, BotSettings, Callback
+
+
+class CallbackSettings(BotSettings):
+    callback_secret: SecretStr = Field(min_length=1, repr=False)
+    callback_confirmation: SecretStr = Field(min_length=1, repr=False)
+
+
+settings = CallbackSettings()
+bot = Bot(settings.token, api_version=settings.api_version, timeout=settings.timeout)
+application = Application(bot, settings.group_id)
+# Register your handlers before starting the ASGI application.
+callback = Callback(
+    application,
+    secret=settings.callback_secret,
+    confirmation_code=settings.callback_confirmation,
+)
+asgi_app = callback.create_app()
+```
+
+Set `VK_TOKEN`, `VK_GROUP_ID`, `VK_CALLBACK_SECRET`, and `VK_CALLBACK_CONFIRMATION`, then:
+
+```bash
+uv run --extra callback uvicorn examples.callback:create_app --factory
+```
+
+Expose `/callback` through your HTTPS deployment and configure the same secret in VK.
+ASGI lifespan manages startup/shutdown. `Callback.handle()` is also available for other
+HTTP frameworks, provided the caller manages Application's async lifecycle.
+
+Confirmation returns the configured confirmation code. Ordinary events return `ok` only
+after successful processing. A bounded in-memory cache skips successful duplicates.
+Partial handler failures, restarts and multiple workers can repeat side effects; this
+is not a durable queue or an exactly-once processing guarantee. See the architecture
+for delivery limitations and resource limits.
+
+## Documentation
+
+- [Architecture and lifecycle](docs/architecture/project-architecture.md)
+- [python-telegram-bot design mapping](docs/architecture/python-telegram-bot-compatibility.md)
+- [VK API support](docs/development/api-compatibility.md)
+- [Contributing and verification](CONTRIBUTING.md)
+- [Unreleased changes](CHANGELOG.md)
+
+Other Python versions will be assessed after implementation and regression testing.

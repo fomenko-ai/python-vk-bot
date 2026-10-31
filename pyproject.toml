@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "python-vk-bot"
+version = "0.1.0"
+description = "An asynchronous framework for VK community bots."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = ["httpx>=0.28,<1", "pydantic>=2.12,<3", "pydantic-settings>=2.12,<3"]
+authors = [{ name = "Aleksei Fomenko", email = "fomenko_ai@proton.me" }]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["vk", "bot", "asyncio"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+callback = ["starlette>=0.49,<1", "uvicorn>=0.38,<1"]
+
+[dependency-groups]
+dev = ["pytest>=8.4", "pytest-asyncio>=1.2", "pytest-cov>=6", "ruff>=0.14", "ty"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["python_vk_bot"]
+
+[tool.hatch.build.targets.sdist]
+include = ["python_vk_bot", "README.md", "LICENSE", "pyproject.toml", "CHANGELOG.md"]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+norecursedirs = ["python_compatibility_tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["integration: opt-in checks requiring VK credentials or external services"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "PT", "ANN", "S", "PTH"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["python_vk_bot"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
+"python_compatibility_tests/**/*.py" = ["S101"]
