@@ -151,4 +151,4 @@ References: [HTTPX async](https://www.python-httpx.org/async/),
 
 The approved implementation has regression coverage; other Python versions were assessed
 after the Python 3.14 suite passed. See [verification results](../development/verification.md).
-No support below Python 3.14, durable queue, distributed state or release publication is claimed.
+No support below Python 3.14, durable queue or distributed state is claimed.

@@ -1,12 +1,16 @@
 # Changelog
 
 All notable changes will be documented here, following Keep a Changelog.
-No release has been published by this change.
 
-## Unreleased
+## 0.1.0 - 2026-10-31
 
 ### Added
 
+- Internal vk-api-upgrade Agent Skill for maintainers to audit VK API compatibility and
+  implement approved upgrades.
+- Bundled telegram-to-vk Agent Skill and migration reference in Python distributions,
+  discoverable with `uvx library-skills` after package installation.
+- Agent Skills documentation covering installation, AI agent setup, usage and approval rules.
 - Public BotSettings based on pydantic-settings, with VK_* environment variables, explicit
   dotenv loading and subclass extensions; Long Poll and Callback examples use settings.
 - Async Bot and Application with explicit lifecycle, ordered handlers, composable filters,

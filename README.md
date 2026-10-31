@@ -6,7 +6,7 @@
 
 An asynchronous framework for VK community bots, inspired by python-telegram-bot.
 Development targets **Python 3.14** and VK API **5.199**. The regression suite runs without
-network access; see [verification results](docs/development/verification.md). No release is claimed.
+network access; see [verification results](docs/development/verification.md).
 
 ## Installation
 
@@ -191,12 +191,26 @@ Partial handler failures, restarts and multiple workers can repeat side effects;
 is not a durable queue or an exactly-once processing guarantee. See the architecture
 for delivery limitations and resource limits.
 
+## Agent Skills
+
+The bundled **telegram-to-vk** Agent Skill helps AI coding agents migrate
+`python-telegram-bot` applications to VK using `python-vk-bot`.
+
+After installing a package version containing the skill, run from your bot project's root:
+
+```bash
+uvx library-skills
+```
+
+Select `telegram-to-vk` and the `.agents/skills` target for a compatible AI coding agent.
+The skill adds no runtime dependencies and does not change the framework's behavior.
+See [Agent Skills](docs/agent-skills.md) for package installation, installing from a local
+checkout, and usage examples.
+
 ## Documentation
 
 - [Architecture and lifecycle](docs/architecture/project-architecture.md)
 - [python-telegram-bot design mapping](docs/architecture/python-telegram-bot-compatibility.md)
 - [VK API support](docs/development/api-compatibility.md)
 - [Contributing and verification](CONTRIBUTING.md)
-- [Unreleased changes](CHANGELOG.md)
-
-Other Python versions will be assessed after implementation and regression testing.
+- [Changelog](CHANGELOG.md)

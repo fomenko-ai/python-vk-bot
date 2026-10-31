@@ -15,7 +15,7 @@ The project aims for a developer experience conceptually consistent with `python
 2. **Naming:** Prefer familiar names (`Application`, `ApplicationBuilder`, `Bot`, `Update`, `Handler`, `Context`, `filters`) only when the underlying concepts are genuinely equivalent. These names are examples, not mandatory classes.
 3. **Developer experience:** Favor comparable application lifecycle, handler registration, filtering, context, and error-handling patterns when practical.
 4. **VK semantics first:** Do not force Telegram-specific concepts onto VK community messaging. Explicitly model VK-specific events, permissions, keyboards, and transport behavior.
-5. **Public API stability:** This is a new, unreleased library. Document the current public API without historical interface comparisons or compatibility layers. Establish stability guarantees before the first release.
+5. **Public API stability:** Document the current public API without historical interface comparisons or speculative compatibility layers. Document stability guarantees explicitly.
 6. **Async-first:** Avoid blocking the event loop in HTTP operations, event polling, dispatch, and lifecycle hooks. Support cancellation and graceful shutdown.
 7. **Typed boundaries:** Use type annotations and Pydantic v2 for structured VK API request/response and event validation where useful. Preserve access to unknown or extra VK fields when appropriate.
 8. **Separation of concerns:** Keep HTTP transport, VK API methods, data models, update ingestion, dispatch, handlers, and application lifecycle independently understandable and testable.
@@ -104,10 +104,10 @@ uv run pytest --strict-markers
 ## Changelog Management
 
 1. Maintain a root-level `CHANGELOG.md` as the human-readable history of user-visible changes. Create it when preparing the first approved release or when the user requests it; do not invent historical releases.
-2. Follow the Keep a Changelog structure with an `Unreleased` section and versioned release sections when releases exist. Use relevant categories such as `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, and `Security`.
+2. Follow the Keep a Changelog structure with versioned release sections. Use relevant categories such as `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, and `Security`.
 3. For approved changes that affect public APIs, supported VK API behavior, dependencies, compatibility, or user-visible functionality, update `CHANGELOG.md` in the same change set. Do not record internal-only edits unless they materially affect users.
 4. Describe changes from the library user's perspective, concisely and factually. Clearly flag breaking changes and link to migration documentation when applicable.
-5. Do not assign release versions or dates, move entries from `Unreleased`, or claim a release was published without explicit user approval or verifiable release evidence.
+5. Do not assign release versions or dates, move entries between release sections, or claim a release was published without explicit user approval or verifiable release evidence.
 6. Respect the approval gates above: changelog edits do not authorize unapproved multi-file changes or test modifications. If approval is pending, propose the changelog entry without editing the file.
 
 ## Commit Message Rules
