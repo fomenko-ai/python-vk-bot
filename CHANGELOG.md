@@ -27,6 +27,12 @@ All notable changes will be documented here, following Keep a Changelog.
   [branch comparison](docs/development/python-compatibility.md).
 - Repository, documentation, issue tracker and changelog links in package metadata.
 
+### Fixed
+
+- Isolate nested attachment metadata from raw message data when creating typed views.
+- Reject conflicting injected-client defaults before multipart uploads instead of
+  sending malformed requests. See [client restrictions](docs/development/media-api.md#resources-and-limitations).
+
 ## 0.1.0 - 2026-10-31
 
 ### Added

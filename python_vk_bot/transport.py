@@ -181,6 +181,10 @@ class HTTPTransport:
         """
         if not self._started or self._client is None:
             raise LifecycleError("Initialize the bot or use its async context manager")
+        if self._client.params:
+            raise ValueError("Upload clients must not define default query parameters")
+        if "content-type" in self._client.headers:
+            raise ValueError("Upload clients must not define a default Content-Type header")
         try:
             # HTTPX percent-encodes an unmatched '[' in a host; reject malformed
             # bracketed hosts before that normalization can turn them into a request.

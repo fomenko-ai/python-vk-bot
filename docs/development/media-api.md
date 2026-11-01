@@ -95,6 +95,9 @@ passes caption and keyboard explicitly and never sends a replacement message on 
 `Message.attachments` contains the raw JSON dictionaries. `Message.typed_attachments`
 returns fresh views reflecting the current raw list; it does not change message JSON
 serialization. Do not modify the view to update the raw message.
+Each view owns a deep copy, including nested unknown metadata in known payloads,
+envelopes and generic fallbacks. Mutating a view does not affect the raw message or
+another view; the next read still reflects any edits made directly to the raw list.
 
 ```python
 from python_vk_bot import DocumentAttachment, PhotoAttachment
@@ -178,6 +181,14 @@ header or redirects. HTTPX request logs redact query parameters. HTTP failures u
 `HTTPError`, network/timeouts use `NetworkError`, upload rejection uses `UploadError`,
 malformed responses use `InvalidResponseError`, and save/edit/delete API errors retain
 their code and method. File read/argument errors use `ValueError` or `TypeError`.
+
+For uploads, an injected client must have empty default query parameters and no
+default `Content-Type` header (case-insensitive). After the lifecycle check,
+`HTTPTransport.upload` raises `ValueError` for either conflict before reading a file
+or sending the multipart request. This preserves the server URL's query and lets
+HTTPX generate the multipart boundary. Client settings are never modified and the
+borrowed client stays caller-owned. Bot upload methods may already have requested
+an upload server before this check; the restriction applies to the multipart stage.
 
 These are additive APIs in a pre-1.0 package: the documented signatures and raw-message
 representation are the supported contract for this release. Internal helpers are not

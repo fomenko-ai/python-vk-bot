@@ -315,6 +315,35 @@ async def test_upload_lifecycle_and_local_file_errors(
     assert not api.requests
 
 
+@pytest.mark.parametrize("default", ["params", "Content-Type", "cOnTeNt-TyPe"])
+async def test_upload_rejects_conflicting_client_defaults_before_reading(
+    default: str, api: MockAPI
+) -> None:
+    params = {"trace": "private-value"} if default == "params" else {}
+    headers = {} if default == "params" else {default: "application/json"}
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(api), params=params, headers=headers
+    ) as client:
+        original_params = httpx.QueryParams(client.params)
+        original_headers = httpx.Headers(client.headers)
+        with io.BytesIO(b"image") as source:
+            bot = Bot("synthetic-token", client=client)
+            with pytest.raises(LifecycleError):
+                await bot.transport.upload("https://upload.example/", source, field="photo")
+            async with bot:
+                with pytest.raises(ValueError, match="default") as caught:
+                    await bot.transport.upload(
+                        "https://upload.example/?hash=private-url", source, field="photo"
+                    )
+                assert "private" not in str(caught.value)
+                assert source.tell() == 0
+                assert not source.closed
+            assert not client.is_closed
+        assert client.params == original_params
+        assert client.headers == original_headers
+    assert not api.requests
+
+
 async def test_file_read_runs_off_loop_and_repeated_cancellation_drains_it(
     bot: Bot, api: MockAPI
 ) -> None:
