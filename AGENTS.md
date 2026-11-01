@@ -120,3 +120,10 @@ Follow the existing linear commit history style:
 4. Add a scope only when it clarifies the change.
 5. Base the message on staged changes (`git diff --cached`).
 6. For broad commits, describe the dominant change in the subject and supporting work in the body when needed.
+
+## Post-commit Compatibility Transfer
+
+1. After committing changes to `main`, transfer the applicable changes to `compat/py39` in the same task using [the sync-compat-branch skill](skills/sync-compat-branch/SKILL.md). The compatibility target is `compat/py39`, regardless of which branch is currently checked out.
+2. Preserve Python 3.9 compatibility and branch-specific dependencies, packaging metadata, release versions and documentation. Record the source commit for each transfer and explain any excluded changes.
+3. Follow existing approval gates, reusing approvals already given for the same scope. Preserve unrelated work; if transfer or verification is blocked, record the remaining work and report the blocker explicitly.
+4. This rule authorizes the local transfer after an authorized commit to `main`; it does not authorize pushing, tagging or publishing releases.

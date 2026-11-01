@@ -45,7 +45,7 @@ raise SystemExit(status)
 PY
 ```
 
-## Python assessment
+## Original Python assessment (2026-10-31)
 
 This assessment was performed after the Python 3.14 regression suite passed. Each installed
 interpreter compiled all 17 package source files with `compile`, without importing modules
@@ -70,17 +70,95 @@ Context annotations rely on deferred evaluation from Python 3.14
 ([PEP 649](https://peps.python.org/pep-0649/)); changing exception syntax alone would not
 establish support for another interpreter.
 
-The package requirement remains `requires-python = ">=3.14"`; verified runtime support
-is CPython 3.14.4. Later versions and other interpreter implementations have not been tested.
+At the time of this assessment, the package requirement was `requires-python = ">=3.14"`
+and the verified runtime was CPython 3.14.4. See the current matrix below for subsequent
+checks on newer interpreters.
 
 ```bash
-# Expected exit status 1: the matrix includes incompatible interpreters.
-sh python_compatibility_tests/run_python_compatibility.sh
+# Reproduce the original diagnostic; expected exit status 1 for Python <3.14.
+sh python_compatibility_tests/run_python_compatibility.sh 3.9 3.10 3.11 3.12 3.13 3.14
 
 # Expected exit status 0 with a locally installed Python 3.14.
 sh python_compatibility_tests/run_python_compatibility.sh 3.14
 ```
 
-The diagnostic uses `uv python find --system --no-python-downloads` and does not install
+The diagnostic uses `uv python find --system --no-project --no-python-downloads` and does not install
 dependencies or alter the project environment. Missing interpreters are reported as
 unchecked and cause a nonzero exit status. It is separate from ordinary pytest discovery.
+
+## Current main matrix
+
+Verified on 2026-11-01, Linux x86_64, after the Python 3.14 contributor checks passed.
+Each syntax check compiled all 17 package sources. Runtime checks used isolated uv
+environments with the existing lockfile, development dependencies and Callback extra.
+
+| Interpreter | Source syntax | Runtime verification |
+| --- | --- | --- |
+| CPython 3.14.4 | Passed | 109 tests passed |
+| CPython 3.15.0 | Passed | 109 tests passed |
+| CPython 3.15.1 | Passed | 109 tests passed |
+| CPython 3.15.2 | Passed | 109 tests passed |
+| CPython 3.15.0b2 (additional preview check) | Passed | 109 tests passed |
+| CPython 3.16.0a1 (preview) | Passed | 109 setup errors in pytest-asyncio; no test bodies ran |
+
+On 3.16.0a1, uv selected a source build of locked `pydantic-core==2.50.2`.
+The first attempt failed because `cc` was unavailable. A subsequent check used Zig
+from an isolated uv tool environment, exposed as `cc` through a temporary PATH
+wrapper. After a C compile/run smoke check passed, pydantic-core built successfully
+and all 27 locked packages installed without changing project dependencies.
+
+Pytest collected 109 tests, but all failed during fixture setup in locked
+`pytest-asyncio==1.4.1`. Its event-loop-policy fixture calls
+`asyncio.get_event_loop_policy()`, which is absent on this interpreter. The removal
+was documented in [Python's asyncio policy deprecation](https://docs.python.org/3.14/library/asyncio-policy.html).
+No test bodies ran; this identifies an incompatible test dependency and leaves
+the library's Python 3.16 runtime support unverified. Recheck with a compatible
+test stack before advertising support. Tests and dependency constraints were not
+adapted during this assessment.
+
+The contributor .venv remains on Python 3.14.4; package metadata and uv.lock have no
+changes from these checks. Other Python implementations were not tested.
+
+Newer interpreters were installed explicitly with `uv python install --no-bin` before
+running the scripts. The installed uv's bundled catalog only offered 3.15.0b2;
+the stable 3.15 releases and 3.16 preview were discovered using
+[Astral's current download metadata](https://github.com/astral-sh/uv/blob/main/crates/uv-python-managed/download-metadata.json)
+with `--python-downloads-json-url`. The compatibility scripts themselves do not download
+interpreters. Release status was checked against [python.org](https://www.python.org/downloads/)
+and the [Python version status](https://devguide.python.org/versions/).
+
+After the Python 3.14 contributor checks pass, run:
+
+```bash
+./python_compatibility_tests/run_python_compatibility.sh
+./python_compatibility_tests/run_runtime_compatibility.sh
+# Both scripts also accept explicit versions, bypassing discovery:
+./python_compatibility_tests/run_python_compatibility.sh 3.14
+./python_compatibility_tests/run_runtime_compatibility.sh 3.14
+# Reproduce checks on stable newer releases:
+./python_compatibility_tests/run_python_compatibility.sh 3.15.0 3.15.1 3.15.2
+./python_compatibility_tests/run_runtime_compatibility.sh 3.15.0 3.15.1 3.15.2
+# Preview check (dependency source builds may require a C/Rust toolchain):
+./python_compatibility_tests/run_python_compatibility.sh 3.16.0a1
+./python_compatibility_tests/run_runtime_compatibility.sh 3.16.0a1
+```
+
+Without arguments, both scripts use
+`uv python list --only-installed --offline --no-python-downloads 'cpython>=3.14'`.
+They deduplicate uv installation keys, so aliases to the same installation do not
+repeat checks. Each request is resolved outside virtual environments, without project
+version preferences. Explicit arguments replace the default and can be used for older
+version diagnostics; they do not change the package's Python requirement.
+
+The runtime script installs the locked package, development group and Callback extra
+in isolated uv environments and runs `python -m pytest --strict-markers -p no:cacheprovider`
+with bytecode writes disabled. It preserves the contributor .venv and produces no
+persistent test reports. Dependency setup may access the package index; no Python
+interpreters are downloaded and the unit tests still block live sockets and DNS.
+
+An empty default matrix or discovery failure exits nonzero. Missing explicitly requested
+interpreters are reported as `NOT CHECKED`. Dependency setup or regression failures also
+produce a nonzero final status; remaining selected interpreters are still checked.
+Newer installed CPython versions enter the default matrix automatically, but are not
+declared supported until their runtime checks pass. The `compat/py39` branch retains
+its explicit default matrix of Python 3.9–3.14.

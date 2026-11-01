@@ -4,12 +4,20 @@ set -eu
 
 project_root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 if [ "$#" -eq 0 ]; then
-    set -- 3.9 3.10 3.11 3.12 3.13 3.14
+    installations=$(uv python list --only-installed --offline --no-python-downloads 'cpython>=3.14')
+    versions=$(printf '%s\n' "$installations" | awk 'NF && !seen[$1]++ { print $1 }')
+    if [ -z "$versions" ]; then
+        echo "NOT CHECKED: no installed CPython >=3.14 found" >&2
+        exit 1
+    fi
+    # uv installation keys contain no whitespace; split them into requests.
+    set -f
+    set -- $versions
 fi
 
 status=0
 for python_version in "$@"; do
-    if interpreter=$(uv python find --system --no-python-downloads "$python_version"); then
+    if interpreter=$(uv python find --system --no-project --no-python-downloads "$python_version"); then
         if "$interpreter" "$project_root/python_compatibility_tests/check_syntax.py"; then
             :
         else

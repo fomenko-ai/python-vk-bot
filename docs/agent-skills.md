@@ -8,23 +8,30 @@ description, followed by instructions linking to detailed references as needed.
 | Skill | Location | Audience | Distribution |
 | --- | --- | --- | --- |
 | `vk-api-upgrade` | `skills/vk-api-upgrade/` | Maintainers | Repository only |
+| `sync-compat-branch` | `skills/sync-compat-branch/` | Maintainers | Repository only |
 | `telegram-to-vk` | `python_vk_bot/.agents/skills/telegram-to-vk/` | Library users | Bundled with Python package |
 
 Use `vk-api-upgrade` to audit API versions, methods, models and event delivery, or prepare
 an approved upgrade. Use `telegram-to-vk` to migrate a python-telegram-bot application while
 preserving its business logic and explicitly accounting for VK differences and missing features.
+Use [sync-compat-branch](../skills/sync-compat-branch/SKILL.md) after a commit to `main`
+to transfer applicable changes to `compat/py39`, preserving its Python support and
+branch-specific configuration.
 
 ## Install the migration skill
 
 There are three separate steps: install the Python package, locate its bundled files, and
 expose the chosen skill to your AI coding agent. Package installation alone does not register a skill.
 
-In the bot project's root, install the package and its migration skill:
+In the bot project's root, install the chosen branch and locate its migration skill:
 
 ```bash
-uv add python-vk-bot
+uv add git+https://github.com/fomenko-ai/python-vk-bot.git --branch main
 uvx library-skills
 ```
+
+For Python 3.9–3.13, select `--branch compat/py39` instead. See
+[Python compatibility](development/python-compatibility.md) for branch requirements.
 
 Select `telegram-to-vk` and the `.agents/skills` target when prompted. The external
 [Library Skills tool](https://library-skills.io/use/) scans installed project dependencies
@@ -36,7 +43,7 @@ To install from a local checkout, run `uv build` in this repository, then in a s
 project use the actual absolute path of the resulting wheel:
 
 ```bash
-uv add /absolute/path/to/python_vk_bot-0.1.0-py3-none-any.whl
+uv add /absolute/path/to/python_vk_bot-0.1.1-py3-none-any.whl
 uvx library-skills
 ```
 
@@ -64,14 +71,16 @@ makes the skill available in the consumer project. Consult your AI agent's docum
 supported discovery paths and reload instructions. Reading the resources or creating a link
 verifies file availability, not whether a particular running client loaded it.
 
-## Enable the internal maintenance skill
+## Enable the internal maintenance skills
 
-`vk-api-upgrade` is excluded from Python distributions. Maintainers use its source in this
-checkout. On a system supporting symlinks, run from the repository root:
+`vk-api-upgrade` and `sync-compat-branch` are excluded from Python distributions.
+Maintainers use their sources in this checkout. On a system supporting symlinks,
+run from the repository root, creating only the links you need:
 
 ```bash
 mkdir -p .agents/skills
 ln -s ../../skills/vk-api-upgrade .agents/skills/vk-api-upgrade
+ln -s ../../skills/sync-compat-branch .agents/skills/sync-compat-branch
 ```
 
 Inspect an existing destination before changing it; do not overwrite another skill.
@@ -80,13 +89,15 @@ package installation. A maintainer may instead link the source directory from th
 `~/.agents/skills` if their AI agent supports that location and they deliberately want it
 available across projects.
 
-The internal skill references repository files, so use it with the source checkout available.
+The internal skills reference repository files, so use them with the source checkout available.
 The bundled migration skill is self-contained and works without repository docs.
 
 ## Example requests
 
 - `Use $vk-api-upgrade to audit this checkout against current official VK documentation.
   Report confirmed gaps and propose changes before editing.`
+- `Use $sync-compat-branch to transfer the main commit from this task to compat/py39
+  and verify it on the supported Python versions.`
 - `Use $telegram-to-vk to inspect this Telegram bot and propose a VK migration, including
   unsupported features and the required community configuration.`
 - `Use $telegram-to-vk to implement the approved handler migration while preserving the
@@ -109,7 +120,7 @@ recheck official VK documentation and report unavailable or conflicting sources.
 
 Validate skill frontmatter and reference links, then build with `uv build`. Inspect both
 archives for `python_vk_bot/.agents/skills/telegram-to-vk/SKILL.md` and its
-`references/migration-mapping.md`. Verify the internal skill is absent. Install the wheel
+`references/migration-mapping.md`. Verify both internal skills are absent. Install the wheel
 and sdist into separate temporary Python 3.14 consumer projects with uv, read both resources
 outside this checkout, and check Library Skills discovery/installation there. Keep generated
 archives and environments out of Git. Run the repository's configured quality checks.

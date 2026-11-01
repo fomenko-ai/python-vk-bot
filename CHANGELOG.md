@@ -2,6 +2,15 @@
 
 All notable changes will be documented here, following Keep a Changelog.
 
+## 0.1.1 - 2026-11-01
+
+### Added
+
+- Installation and compatibility guidance for the separate `main` (Python >=3.14)
+  and `compat/py39` (tested on Python 3.9–3.14) branches. See the
+  [branch comparison](docs/development/python-compatibility.md).
+- Repository, documentation, issue tracker and changelog links in package metadata.
+
 ## 0.1.0 - 2026-10-31
 
 ### Added

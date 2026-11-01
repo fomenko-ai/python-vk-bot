@@ -2,17 +2,29 @@
   <img src="logo.png" alt="python-vk-bot logo" width="720">
 </p>
 
+[![main · Python 3.14+](https://img.shields.io/badge/main-Python%203.14%2B-blue.svg)](https://github.com/fomenko-ai/python-vk-bot/tree/main)
+[![compat/py39 · Python 3.9–3.14](https://img.shields.io/badge/compat%2Fpy39-Python%203.9%E2%80%933.14-blue.svg)](https://github.com/fomenko-ai/python-vk-bot/tree/compat/py39)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 # python-vk-bot
 
 An asynchronous framework for VK community bots, inspired by python-telegram-bot.
-Development targets **Python 3.14** and VK API **5.199**. The regression suite runs without
-network access; see [verification results](docs/development/verification.md).
+Supports VK API **5.199**.
 
 ## Installation
 
 ```bash
 uv add python-vk-bot
 ```
+
+For Python 3.9–3.13, use the `compat/py39` branch:
+
+```bash
+uv add git+https://github.com/fomenko-ai/python-vk-bot.git --branch compat/py39
+```
+
+See [Python compatibility](docs/development/python-compatibility.md) for branch
+differences, optional dependencies and installation with pip.
 
 ### Install from this checkout
 
@@ -213,4 +225,5 @@ checkout, and usage examples.
 - [python-telegram-bot design mapping](docs/architecture/python-telegram-bot-compatibility.md)
 - [VK API support](docs/development/api-compatibility.md)
 - [Contributing and verification](CONTRIBUTING.md)
+- [Python compatibility branches](docs/development/python-compatibility.md)
 - [Changelog](CHANGELOG.md)
