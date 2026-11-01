@@ -134,6 +134,39 @@ def test_photo_and_document_metadata_are_accessible() -> None:
         photo.type = "photo"  # ty: ignore[invalid-assignment] -- frozen public envelope
 
 
+@pytest.mark.parametrize("kind", ["photo", "future", "incomplete"])
+def test_nested_metadata_is_isolated_between_raw_message_and_views(kind: str) -> None:
+    raw = message()
+    payload: dict[str, JsonValue] = {"future": {"nested": [1]}}
+    if kind == "photo":
+        payload.update(id=1, owner_id=7)
+    raw["attachments"] = [
+        {
+            "type": "photo" if kind == "incomplete" else kind,
+            "photo": payload,
+            "extra": {"nested": [1]},
+        }
+    ]
+    parsed = Message.model_validate(raw)
+    serialized = parsed.model_dump(mode="json")
+    first, second = parsed.typed_attachments[0], parsed.typed_attachments[0]
+    assert first.model_extra is not None
+    first.model_extra["extra"]["nested"].append(2)
+    if isinstance(first, PhotoAttachment):
+        assert first.photo.model_extra is not None
+        first.photo.model_extra["future"]["nested"].append(2)
+    else:
+        first.model_extra["photo"]["future"]["nested"].append(2)
+    assert parsed.model_dump(mode="json") == serialized
+    assert second.model_dump() == parsed.typed_attachments[0].model_dump()
+    assert first.model_dump() != second.model_dump()
+    raw_photo = parsed.attachments[0]["photo"]
+    assert isinstance(raw_photo, dict)
+    raw_photo["future"] = {"nested": [3]}
+    assert parsed.typed_attachments[0].model_dump()["photo"]["future"] == {"nested": [3]}
+    assert second.model_dump()["photo"]["future"] == {"nested": [1]}
+
+
 @pytest.mark.parametrize("geo", [None, {"coordinates": {"latitude": 0, "longitude": 0}}])
 def test_location_absence_and_zero_coordinates(geo: JsonValue) -> None:
     raw_message = message()

@@ -64,3 +64,12 @@ native meanings. Removal for recipients requires explicit `delete_for_all=True`.
 Raw `Message.attachments` and additive typed views coexist. No Telegram file IDs,
 album constraints, deletion windows or live-location behavior are inferred. See the
 [media contracts and verification limits](../development/media-api.md).
+
+Upload client defaults rechecked on **2026-11-01** against stable **PTB 22.8** and
+its [HTTPXRequest reference](https://docs.python-telegram-bot.org/en/v22.8/telegram.request.httpxrequest.html).
+PTB exposes HTTPX configuration through its request implementation. This library
+borrows an AsyncClient with explicit ownership checks; VK's separate upload URLs
+must retain their server-issued query parameters. Multipart uploads therefore reject
+default client query parameters and Content-Type instead of rewriting a borrowed
+client's settings. Typed attachment views deep-copy raw JSON, including unknown
+nested fields; they remain independent snapshots rather than mutable message state.

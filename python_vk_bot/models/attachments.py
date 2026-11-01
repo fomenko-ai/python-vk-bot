@@ -1,5 +1,6 @@
 """Typed VK attachment envelopes, retaining fields outside our supported subset."""
 
+from copy import deepcopy
 from typing import Literal
 
 from pydantic import Field, JsonValue, ValidationError, field_validator
@@ -121,6 +122,7 @@ _ATTACHMENT_MODELS: dict[str, type[Attachment]] = {
 
 def parse_attachment(value: dict[str, JsonValue]) -> Attachment:
     """Parse a view without making an otherwise valid Message fail validation."""
+    value = deepcopy(value)
     kind = value.get("type")
     model = _ATTACHMENT_MODELS.get(kind) if isinstance(kind, str) else None
     if model is not None:
