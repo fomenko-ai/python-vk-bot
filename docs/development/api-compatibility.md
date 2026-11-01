@@ -1,6 +1,6 @@
 # VK API support
 
-Verification date: **2026-10-31**. Implementation target: **5.199**, represented as a string.
+Verification date: **2026-11-01** (media work). Implementation target: **5.199**, represented as a string.
 The official [version history](https://dev.vk.com/ru/reference/versions) lists 5.199 as
 the newest documented version. Its entry describes internal changes without a method,
 parameter, or response change. The official [VKCOM schema](https://github.com/VKCOM/vk-api-schema)
@@ -17,7 +17,10 @@ before changing version-dependent behavior.
 | Method / delivery | Library support |
 | --- | --- |
 | messages.send | Bot.send_message / forward_message; one peer, integer result; nonzero int32 random_id |
-| messages.edit | Bot.edit_message; sends message_id or documented cmid, returns bool |
+| messages.edit | Bot.edit_message / edit_message_media; message_id or documented cmid, attachment and keyboard, returns bool |
+| messages.delete | Bot.delete_message; one message_id or peer-scoped cmid; explicit recipient-side deletion |
+| photos.getMessagesUploadServer / photos.saveMessagesPhoto | Bot.upload_photo; multipart photo upload and typed saved attachment |
+| docs.getMessagesUploadServer / docs.save | Bot.upload_document; doc/audio_message upload and typed saved attachment |
 | messages.getByConversationMessageId | Bot.get_message; typed Message or None for an empty items list |
 | messages.sendMessageEventAnswer | Bot.send_message_event_answer; bool result |
 | users.get | Bot.get_user_info; typed User or None; optional profile fields |
@@ -34,7 +37,7 @@ before changing version-dependent behavior.
   attachment, dont_parse_links; forwarding uses forward JSON with source peer_id and
   conversation_message_ids. Only single-recipient sends are wrapped. Raw Bot.request
   can return other documented response forms without implying typed coverage.
-- `messages.edit`: peer_id, message, exactly one message_id/cmid, keyboard JSON,
+- `messages.edit`: peer_id, optional message/attachment, exactly one message_id/cmid, keyboard JSON,
   dont_parse_links; documented success response is 1.
 - `messages.getByConversationMessageId`: peer_id, conversation_message_ids;
   response has count and items. Fields unknown to Message remain accessible.
@@ -87,14 +90,50 @@ The event API version is configured there independently from the outbound reques
 - No schema generator is justified for the small current coverage.
 - Network-free regression tests cover the implemented behavior; live-token integration is not run.
   See [verification results](verification.md).
-- No automatic community provisioning, upload methods, bulk sending, persistent state,
+- No automatic community provisioning, bulk sending, persistent state,
   distributed deduplication, or durable event queue is provided.
+
+## Media verification and uncertainties
+
+On 2026-11-01 the official version history, photo/document upload guides, upload-server
+and save method pages, messages.edit and messages.delete were retrieved directly over
+HTTPS and compared with VKCOM schemas. The web-reading tool could not open dev.vk.com;
+direct retrieval succeeded. The target remains 5.199. No authenticated calls were made.
+
+Community methods require the corresponding messages/photos/docs permissions. Uploads
+do not grant permission to initiate a conversation. Photos use multipart field `photo`
+and a server/photo/hash save tuple; documents use field `file` and a file save token.
+Upload URLs carry their own query credentials, are not logged intact and receive no
+community Authorization header. Upload/save/edit failures are separate and not retried.
+
+The edit method documents `attachment`, `keyboard`, `message_id` and `cmid`, plus errors
+for age, message kind and pinned messages. This confirms the request shape, not a live
+photo-replacement result. Omitted fields have no library-level preservation guarantee.
+The schema and method page disagree on the text length limit; no numeric edit window
+or unified local text limit is introduced.
+
+The delete schema returns full per-message result objects, while the method page only
+describes per-message integer success. The wrapper validates full results and also
+accepts an integer mapping keyed by a global message_id. cmid requests require full
+results to avoid confusing identifier scopes. Both live response forms remain unverified.
+The upload-server schema mentions graffiti, but the method page explicitly describes
+doc/audio_message; only the latter two are exposed by upload_document.
+
+Network-free media regression tests cover the new contracts and failures. An opt-in live
+integration test is implemented, but has only been collected with live execution disabled.
+It uses documented messages.getById to discover the cmid of its own newly sent message;
+the current VKCOM method/response schemas were rechecked for this test on 2026-11-01.
+The current uploader buffers file
+content; it does not claim practical support for VK's maximum document size. The map
+example is implemented but has not been run against VK. See [media API](media-api.md)
+for detailed contracts, published upload limits, source links and remaining verification.
 
 ## Sources
 
 - [VK versions](https://dev.vk.com/ru/reference/versions)
 - [messages.send](https://dev.vk.com/ru/method/messages.send)
 - [messages.edit](https://dev.vk.com/ru/method/messages.edit)
+- [messages.getById](https://dev.vk.com/ru/method/messages.getById)
 - [Bots Long Poll](https://dev.vk.com/ru/api/bots-long-poll/getting-started)
 - [Callback API](https://dev.vk.com/ru/api/callback/getting-started)
 - [Method schema](https://github.com/VKCOM/vk-api-schema/blob/master/messages/methods.json)

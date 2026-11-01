@@ -54,3 +54,24 @@ Its Python 3.9 target is an independent project decision, not a claim about PTB'
 interpreter support. Handler registration and Context state scopes retain their existing
 mapping; Context is a regular dataclass. See [Python compatibility](../development/python-compatibility.md)
 for implementation choices and verification limits.
+
+## Media API
+
+Rechecked on **2026-11-01** against stable **PTB 22.8**:
+
+- [Bot media methods](https://docs.python-telegram-bot.org/en/v22.8/telegram.bot.html#telegram.Bot.edit_message_media)
+- [InputMediaPhoto](https://docs.python-telegram-bot.org/en/v22.8/telegram.inputmediaphoto.html)
+- [InputFile](https://docs.python-telegram-bot.org/en/v22.8/telegram.inputfile.html)
+- [Delete message](https://docs.python-telegram-bot.org/en/v22.8/telegram.bot.html#telegram.Bot.delete_message)
+- [Tagged Bot source](https://github.com/python-telegram-bot/python-telegram-bot/blob/v22.8/src/telegram/_bot.py)
+
+PTB's file inputs and media-edit convenience inform the public API. VK keeps upload,
+save and messaging separate: `upload_photo` / `upload_document` return VK attachments;
+`edit_message_media` currently replaces photos and returns VK's boolean status, not a
+Telegram Message. It accepts a saved photo or local file; no InputMedia hierarchy is
+needed. Peer IDs, message IDs/cmid, caption-as-message and VK keyboards retain their
+native meanings. Removal for recipients requires explicit `delete_for_all=True`.
+
+Raw `Message.attachments` and additive typed views coexist. No Telegram file IDs,
+album constraints, deletion windows or live-location behavior are inferred. See the
+[media contracts and verification limits](../development/media-api.md).

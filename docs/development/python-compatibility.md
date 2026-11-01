@@ -5,8 +5,8 @@
 and other Python implementations have not been verified. The default contributor
 interpreter remains Python 3.14.
 
-The library installs, imports and passes all 112 regression tests on the checked
-3.9–3.14 interpreters. Both base wheel installation and sdist installation with the
+The library installs, imports and passes all 243 regression tests on the checked
+3.9–3.14 interpreters. Before the media API transfer, both base wheel installation and sdist installation with the
 Callback extra were also checked in clean Python 3.9 consumer environments.
 See [exact results and reproduction commands](verification.md).
 
@@ -40,6 +40,14 @@ contributor environments, not a constraint imposed on downstream users. For repr
 Git installations, select a reviewed commit or release tag and lock the consumer project.
 Installing the branch and main into the same environment does not provide two independent
 libraries: they have the same distribution and import names.
+
+## Media transfer
+
+Media API, keyboard and map examples are transferred from main commit
+`f3b906b66b2192e5a1e42431f191e6a98e04ed36`. Runtime aliases and model annotations
+use Python 3.9-compatible typing, and the map state is a regular dataclass.
+New concurrency tests use portable timeout and owned-task helpers. Branch-specific
+dependencies, Python targets and lifecycle safeguards are retained.
 
 ## Runtime choices
 

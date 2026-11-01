@@ -30,6 +30,10 @@ class InvalidResponseError(VKError):
     """Malformed JSON or an unexpected response shape."""
 
 
+class UploadError(VKError):
+    """The upload server rejected a file; its potentially sensitive reply is omitted."""
+
+
 class InvalidUpdateError(VKError):
     """An event does not match the supported data boundary."""
 

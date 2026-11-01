@@ -1,6 +1,7 @@
 # Project architecture
 
 Status: implemented compatibility branch with regression verification on Python 3.9–3.14.
+Live media operations remain unverified.
 
 ## Design goals
 
@@ -22,6 +23,7 @@ python_vk_bot/
   models/
     base.py         extra-field retention policy
     api.py          API errors, envelopes and Long Poll responses
+    attachments.py  typed media envelopes, raw fallback and identifier serialization
     messages.py     messages, geo, users and keyboard structures
     events.py       event envelope, typed views and raw object access
   long_poll.py      session acquisition, cursor and recovery
@@ -149,8 +151,23 @@ References: [HTTPX async](https://www.python-httpx.org/async/),
 
 ## Verification and limits
 
-The 112-test regression suite passes on Python 3.9–3.14. Syntax, dependency installation,
+The 243-test regression suite passes on Python 3.9–3.14. Syntax, dependency installation,
 imports, type checking and package builds have also been checked. See
 [verification results](../development/verification.md) and
 [Python compatibility](../development/python-compatibility.md).
 No durable queue or distributed state is claimed.
+
+## Media operations
+
+Bot orchestrates upload-server discovery, multipart transfer, save and message editing.
+HTTPTransport reuses its async client without forwarding API credentials to upload URLs.
+Local reads run in a worker and the current uploader buffers file content in memory.
+Borrowed files stay open; owned reads close their resources. No mutation retries or
+automatic send fallback are added. These operations share Bot's existing lifecycle.
+
+Message.attachments is raw JSON; typed_attachments produces fresh typed envelopes or a
+generic fallback retaining unknown/malformed fields. Typed upload results use stricter
+validation. Geo continues to require a coordinate pair when present. The map example
+serializes rendering and editing per message without changing application dispatch.
+See [decision 0002](../decisions/0002-media-attachments.md) and the
+[media API](../development/media-api.md) for contracts, limits and pending verification.
