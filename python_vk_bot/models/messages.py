@@ -2,6 +2,7 @@
 
 from pydantic import Field, JsonValue
 
+from .attachments import Attachment, parse_attachment
 from .base import VKModel
 
 
@@ -23,6 +24,11 @@ class Message(VKModel):
     geo: Geo | None = None
     payload: str | None = None
     attachments: list[dict[str, JsonValue]] = Field(default_factory=list)
+
+    @property
+    def typed_attachments(self) -> list[Attachment]:
+        """Return fresh typed views; edits to the raw list remain visible."""
+        return [parse_attachment(value) for value in self.attachments]
 
 
 class MessageObject(VKModel):

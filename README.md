@@ -38,6 +38,17 @@ For the optional Callback HTTP receiver:
 uv sync --locked --extra callback
 ```
 
+## Examples
+
+See the [examples guide](examples/README.md) for setup, required events and run commands.
+
+| Example | Description |
+| --- | --- |
+| [Echo bot](examples/echo.py) | Reply to text messages using Bots Long Poll |
+| [Keyboards](examples/keyboards.py) | Ordinary text buttons and inline callback buttons with message editing |
+| [Interactive map](examples/interactive_map.py) | Generate, upload and replace a PNG using navigation buttons |
+| [Callback receiver](examples/callback.py) | Receive events through an ASGI application |
+
 ## Long Poll bot
 
 Enable Bots Long Poll and the `message_new` event in the community settings. Configure
@@ -149,8 +160,8 @@ async with Bot(token) as bot:
     user = await bot.get_user_info(user_id)
 ```
 
-An injected `httpx.AsyncClient` remains caller-owned. Methods cover sending, editing,
-forwarding, fetching a message/user, answering message events, and obtaining Long Poll
+An injected `httpx.AsyncClient` remains caller-owned. Methods cover uploading, sending,
+editing, deleting, forwarding, fetching a message/user, answering message events, and obtaining Long Poll
 connection data. `Bot.request(method, parameters)` exposes raw JSON results for additional
 VK methods; nested request parameters must be JSON encoded explicitly.
 
@@ -202,6 +213,53 @@ after successful processing. A bounded in-memory cache skips successful duplicat
 Partial handler failures, restarts and multiple workers can repeat side effects; this
 is not a durable queue or an exactly-once processing guarantee. See the architecture
 for delivery limitations and resource limits.
+
+## Media and location
+
+With an initialized bot:
+
+```python
+from pathlib import Path
+
+photo = await bot.upload_photo(peer_id, Path("map.png"))
+message_id = await bot.send_message(peer_id, "Map", attachment=photo, keyboard=keyboard)
+
+document = await bot.upload_document(peer_id, Path("report.pdf"))
+await bot.send_message(peer_id, "Report", attachment=document)
+
+await bot.edit_message_media(
+    peer_id,
+    new_png_bytes,
+    message_id=message_id,
+    caption="Updated map",
+    keyboard=keyboard,
+    filename="map.png",
+)
+```
+
+Uploads accept bytes, `Path` and binary file objects. Files are read off the event loop
+and buffered in memory; use inputs that fit comfortably in memory. Existing attachment
+identifiers can be passed directly to send/edit methods, and a saved photo passed to
+`edit_message_media` skips uploading. Supply the desired caption and keyboard explicitly;
+there is no automatic fallback send when editing fails.
+
+Incoming `message.attachments` remain raw dictionaries. Use `message.typed_attachments`
+for `PhotoAttachment`, `DocumentAttachment`, `VideoAttachment`, `AudioMessageAttachment`
+or a generic `Attachment` preserving unknown fields. With `message.geo is not None`,
+read `message.geo.coordinates.latitude` and `.longitude`; `filters.LOCATION` selects
+these messages. Incomplete coordinate objects fail validation.
+
+See the [media API guide](docs/development/media-api.md) for incoming attachment examples,
+deletion, errors and VK restrictions, and [interactive_map.py](examples/interactive_map.py)
+for a PNG grid with navigation buttons. Enable `message_new` and `message_event`, then run:
+
+```bash
+uv run python examples/interactive_map.py
+```
+
+The media API has network-free regression tests. Actual replacement of a photo in an
+existing VK message has not yet been verified with a live token; an explicitly enabled
+[integration test](docs/development/media-api.md#live-integration-test) is provided.
 
 ## Agent Skills
 

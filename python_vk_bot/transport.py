@@ -1,10 +1,14 @@
 """Reusable HTTP transport; request credentials never become client defaults."""
 
+import asyncio
 import logging
 import re
 from collections.abc import Mapping
+from contextlib import suppress
+from pathlib import Path
 from types import TracebackType
-from typing import Self, cast
+from typing import BinaryIO, Literal, Self, cast
+from urllib.parse import urlsplit
 
 import httpx
 from pydantic import JsonValue, SecretStr, ValidationError
@@ -17,10 +21,23 @@ from .errors import (
     LifecycleError,
     NetworkError,
     RateLimitError,
+    UploadError,
 )
 from .models.api import APIEnvelope
 
 type Parameter = str | int | float | bool | None
+type FileInput = bytes | Path | BinaryIO
+
+
+def _read_upload(source: Path | BinaryIO) -> bytes:
+    """Read in a worker; Path.read_bytes closes its own file even on failure."""
+    try:
+        content = source.read_bytes() if isinstance(source, Path) else source.read()
+    except OSError, ValueError:
+        raise ValueError("Could not read the upload file") from None
+    if not isinstance(content, bytes):
+        raise TypeError("Upload files must be opened in binary mode")
+    return content
 
 
 class _RedactQuery(logging.Filter):
@@ -89,6 +106,7 @@ class HTTPTransport:
         params: Mapping[str, str] | None = None,
         headers: Mapping[str, str] | None = None,
         timeout: float | None = None,
+        files: Mapping[str, tuple[str, bytes]] | None = None,
     ) -> JsonValue:
         if not self._started or self._client is None:
             raise LifecycleError("Initialize the bot or use its async context manager")
@@ -99,6 +117,7 @@ class HTTPTransport:
                 data=data,
                 params=params,
                 headers=headers,
+                files=files,
                 timeout=self.config.timeout if timeout is None else timeout,
                 follow_redirects=False,
                 auth=None,
@@ -140,6 +159,67 @@ class HTTPTransport:
         if "response" not in envelope.model_fields_set:
             raise InvalidResponseError("VK API envelope has no response")
         return envelope.response
+
+    async def upload(
+        self,
+        server: str,
+        source: FileInput,
+        *,
+        field: Literal["photo", "file"],
+        filename: str | None = None,
+    ) -> JsonValue:
+        """Buffer a local file off-loop, then upload without community credentials.
+
+        Memory usage is proportional to file size. Borrowed files are read from their
+        current position and remain open. Cancellation drains a pending local read
+        before returning ownership of a borrowed file to its caller.
+        """
+        if not self._started or self._client is None:
+            raise LifecycleError("Initialize the bot or use its async context manager")
+        try:
+            # HTTPX percent-encodes an unmatched '[' in a host; reject malformed
+            # bracketed hosts before that normalization can turn them into a request.
+            urlsplit(server)
+            url = httpx.URL(server)
+        except httpx.InvalidURL, ValueError:
+            raise InvalidResponseError("Invalid upload server URL") from None
+        if url.scheme != "https" or not url.host or url.userinfo or url.fragment:
+            raise InvalidResponseError("Unexpected upload server URL")
+        if not isinstance(source, (bytes, Path)) and not callable(getattr(source, "read", None)):
+            raise TypeError("Provide bytes, a Path, or a binary file")
+        if filename is None:
+            name = getattr(source, "name", None)
+            filename = Path(name).name if isinstance(name, str) else None
+        if filename is None:
+            filename = "photo.png" if field == "photo" else "document.bin"
+        if (
+            not filename
+            or filename in {".", ".."}
+            or any(char in filename for char in '/\\"')
+            or any(ord(char) < 32 or ord(char) == 127 for char in filename)
+        ):
+            raise ValueError("filename must be a plain, nonempty file name")
+        if isinstance(source, bytes):
+            content = source
+        else:
+            reading = asyncio.create_task(asyncio.to_thread(_read_upload, source))
+            try:
+                content = await asyncio.shield(reading)
+            except asyncio.CancelledError:
+                # Repeated cancellation must not return a borrowed file while the
+                # worker is still consuming it. Retrieve any read exception as well.
+                while not reading.done():
+                    with suppress(Exception, asyncio.CancelledError):
+                        await asyncio.shield(reading)
+                with suppress(Exception):
+                    reading.result()
+                raise
+        if not content:
+            raise ValueError("Cannot upload an empty file")
+        payload = await self._request("POST", server, files={field: (filename, content)})
+        if isinstance(payload, dict) and ("error" in payload or "error_code" in payload):
+            raise UploadError("VK upload server rejected the file")
+        return payload
 
     async def poll(self, server: str, *, key: SecretStr, ts: str, wait: int) -> JsonValue:
         url = httpx.URL(server)

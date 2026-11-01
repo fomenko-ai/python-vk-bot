@@ -2,10 +2,20 @@
 
 All notable changes will be documented here, following Keep a Changelog.
 
-## 0.1.1 - 2026-11-01
+## 0.2.0 - 2026-11-01
 
 ### Added
 
+- An ordinary and inline keyboard example, with setup and usage instructions for all
+  examples in the [examples guide](examples/README.md).
+- Photo and document uploads from bytes, paths and binary files, with typed saved
+  attachments and document/voice upload selection.
+- Typed incoming photo, document, video and voice views through
+  `Message.typed_attachments`, preserving raw attachments and unknown fields.
+- Attachment support in message editing, a photo replacement convenience method and
+  explicit message deletion. See [media contracts and limits](docs/development/media-api.md).
+- An interactive PNG map example with serialized navigation updates. Live VK photo
+  replacement remains unverified; an opt-in integration test is available.
 - Installation and compatibility guidance for the separate `main` (Python >=3.14)
   and `compat/py39` (tested on Python 3.9–3.14) branches. See the
   [branch comparison](docs/development/python-compatibility.md).

@@ -59,3 +59,11 @@ def message(
 
 def connection(ts: str = "10", key: str = "synthetic-poll-key") -> dict[str, JsonValue]:
     return {"response": {"server": "https://poll.example/events", "key": key, "ts": ts}}
+
+
+def queue_photo_upload(api: MockAPI, *, photo_id: int = 11) -> None:
+    api.add({"response": {"upload_url": "https://upload.example/photo?hash=upload-secret"}})
+    api.add({"server": 5, "photo": "opaque-photo", "hash": "save-secret"})
+    api.add(
+        {"response": [{"id": photo_id, "owner_id": -42, "access_key": "photo-key", "extra": 1}]}
+    )
