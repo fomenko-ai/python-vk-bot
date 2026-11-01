@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from collections.abc import AsyncIterator
 
@@ -8,7 +10,7 @@ from pydantic import JsonValue
 from python_vk_bot import Application, Callback, Context, Handler, Update
 from python_vk_bot.errors import CallbackAuthenticationError
 
-from .helpers import event
+from .helpers import event, running_task, timeout
 
 pytest.importorskip("starlette")
 
@@ -133,17 +135,16 @@ async def test_concurrent_duplicate_is_acknowledged_after_first(
         httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
-        asyncio.timeout(2),
-        asyncio.TaskGroup() as tasks,
+        timeout(2),
+        running_task(client.post("/callback", json=authenticated_event())) as first,
     ):
-        first = tasks.create_task(client.post("/callback", json=authenticated_event()))
         await entered.wait()
-        second = tasks.create_task(client.post("/callback", json=authenticated_event()))
-        await asyncio.sleep(0)
-        assert not second.done()
-        release.set()
-    assert first.result().text == "ok"
-    assert second.result().text == "ok"
+        async with running_task(client.post("/callback", json=authenticated_event())) as second:
+            await asyncio.sleep(0)
+            assert not second.done()
+            release.set()
+            assert (await first).text == "ok"
+            assert (await second).text == "ok"
     assert calls == 1
 
 
@@ -179,10 +180,9 @@ async def test_overload_rejected_and_capacity_released(
         httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
-        asyncio.timeout(2),
-        asyncio.TaskGroup() as tasks,
+        timeout(2),
+        running_task(client.post("/callback", json=authenticated_event())) as active,
     ):
-        active = tasks.create_task(client.post("/callback", json=authenticated_event()))
         await entered.wait()
         overloaded = await client.post("/callback", json=authenticated_event("second"))
         assert overloaded.status_code == 503
@@ -214,7 +214,7 @@ async def test_request_timeout_cancels_handler_and_releases_capacity(
         httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
-        asyncio.timeout(2),
+        timeout(2),
     ):
         timed_out = await client.post("/callback", json=authenticated_event())
         assert timed_out.status_code == 503
@@ -231,3 +231,40 @@ async def test_missing_lifespan_does_not_process_events(callback: Callback) -> N
     ) as client:
         response = await client.post("/callback", json=authenticated_event())
     assert response.status_code == 503
+
+
+async def test_external_cancellation_releases_capacity_and_allows_retry(
+    application: Application, callback: Callback
+) -> None:
+    entered, cleaned = asyncio.Event(), asyncio.Event()
+    calls = 0
+
+    async def handler(update: Update, context: Context) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            entered.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cleaned.set()
+
+    application.add_handler(Handler(handler))
+    app = callback.create_app(max_pending=1)
+    async with (
+        app.router.lifespan_context(app),
+        httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        ) as client,
+        timeout(2),
+    ):
+        async with running_task(client.post("/callback", json=authenticated_event())) as request:
+            await entered.wait()
+            request.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await request
+        assert cleaned.is_set()
+        retried = await client.post("/callback", json=authenticated_event())
+        assert retried.status_code == 200
+        assert retried.text == "ok"
+    assert calls == 2

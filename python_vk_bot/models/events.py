@@ -1,8 +1,11 @@
 """Validate known event objects once and retain unknown event types."""
 
-from typing import Self
+from __future__ import annotations
+
+from typing import Optional
 
 from pydantic import JsonValue, PrivateAttr, ValidationError, field_validator, model_validator
+from typing_extensions import Self
 
 from python_vk_bot.errors import InvalidUpdateError
 
@@ -16,8 +19,8 @@ class Update(VKModel):
     event_id: str
     v: str
     object: JsonValue
-    _message: Message | None = PrivateAttr(default=None)
-    _message_event: MessageEvent | None = PrivateAttr(default=None)
+    _message: Optional[Message] = PrivateAttr(default=None)
+    _message_event: Optional[MessageEvent] = PrivateAttr(default=None)
 
     @field_validator("event_id", mode="before")
     @classmethod
@@ -43,15 +46,15 @@ class Update(VKModel):
             raise InvalidUpdateError("Invalid VK event structure") from None
 
     @property
-    def message(self) -> Message | None:
+    def message(self) -> Optional[Message]:
         return self._message
 
     @property
-    def message_event(self) -> MessageEvent | None:
+    def message_event(self) -> Optional[MessageEvent]:
         return self._message_event
 
     @property
-    def user_id(self) -> int | None:
+    def user_id(self) -> Optional[int]:
         if self.message is not None:
             return self.message.from_id
         if self.message_event is not None:
@@ -59,7 +62,7 @@ class Update(VKModel):
         return None
 
     @property
-    def peer_id(self) -> int | None:
+    def peer_id(self) -> Optional[int]:
         if self.message is not None:
             return self.message.peer_id
         if self.message_event is not None:

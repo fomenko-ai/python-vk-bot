@@ -1,12 +1,16 @@
 """Typed handler registration without a conversation-state framework."""
 
+from __future__ import annotations
+
 from collections.abc import Awaitable, Callable
+
+from typing_extensions import TypeAlias
 
 from . import filters
 from .context import Context
 from .models import Update
 
-type HandlerCallback = Callable[[Update, Context], Awaitable[None]]
+HandlerCallback: TypeAlias = Callable[[Update, Context], Awaitable[None]]
 
 
 class Handler:

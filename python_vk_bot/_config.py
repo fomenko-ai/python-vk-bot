@@ -3,13 +3,14 @@
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from typing_extensions import TypeAlias
 
 DEFAULT_API_VERSION = "5.199"
 DEFAULT_TIMEOUT = 40.0
 
-type Token = Annotated[SecretStr, Field(min_length=1)]
-type APIVersion = Annotated[str, Field(pattern=r"^\d+\.\d+$")]
-type RequestTimeout = Annotated[float, Field(gt=0, allow_inf_nan=False)]
+Token: TypeAlias = Annotated[SecretStr, Field(min_length=1)]
+APIVersion: TypeAlias = Annotated[str, Field(pattern=r"^\d+\.\d+$")]
+RequestTimeout: TypeAlias = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 
 
 class TransportConfig(BaseModel):

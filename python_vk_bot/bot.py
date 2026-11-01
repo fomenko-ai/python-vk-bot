@@ -1,13 +1,16 @@
 """Typed wrappers for supported VK community bot methods."""
 
+from __future__ import annotations
+
 import json
 import secrets
 from collections.abc import Mapping
 from types import TracebackType
-from typing import Self
+from typing import Optional, TypeVar, Union
 
 import httpx
 from pydantic import BaseModel, JsonValue, SecretStr, TypeAdapter, ValidationError
+from typing_extensions import Self
 
 from ._config import DEFAULT_API_VERSION, DEFAULT_TIMEOUT, TransportConfig
 from .errors import InvalidResponseError
@@ -15,8 +18,10 @@ from .models.api import LongPollServer
 from .models.messages import Keyboard, Message, MessagePage, User
 from .transport import HTTPTransport, Parameter
 
+T = TypeVar("T", bound=BaseModel)
 
-def _parse[T: BaseModel](model: type[T], payload: JsonValue) -> T:
+
+def _parse(model: type[T], payload: JsonValue) -> T:
     try:
         return model.model_validate(payload)
     except ValidationError:
@@ -29,7 +34,7 @@ def _integer(payload: JsonValue) -> int:
     return payload
 
 
-def _random_id(value: int | None) -> int:
+def _random_id(value: Optional[int]) -> int:
     if value is None:
         return secrets.randbelow(2**31 - 1) + 1
     if type(value) is not int or not -(2**31) <= value < 2**31 or value == 0:
@@ -40,11 +45,11 @@ def _random_id(value: int | None) -> int:
 class Bot:
     def __init__(
         self,
-        token: str | SecretStr,
+        token: Union[str, SecretStr],
         *,
         api_version: str = DEFAULT_API_VERSION,
         timeout: float = DEFAULT_TIMEOUT,
-        client: httpx.AsyncClient | None = None,
+        client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         config = TransportConfig(
             token=token if isinstance(token, SecretStr) else SecretStr(token),
@@ -65,9 +70,9 @@ class Bot:
 
     async def __aexit__(
         self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
+        exc_type: Optional[type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
     ) -> None:
         await self.shutdown()
 
@@ -81,7 +86,7 @@ class Bot:
         result = await self.request("groups.getLongPollServer", {"group_id": group_id})
         return _parse(LongPollServer, result)
 
-    async def get_user_info(self, user_id: int) -> User | None:
+    async def get_user_info(self, user_id: int) -> Optional[User]:
         result = await self.request("users.get", {"user_ids": user_id, "fields": "screen_name"})
         try:
             users = TypeAdapter(list[User]).validate_python(result)
@@ -89,7 +94,7 @@ class Bot:
             raise InvalidResponseError("Invalid users.get response") from None
         return users[0] if users else None
 
-    async def get_message(self, peer_id: int, conversation_message_id: int) -> Message | None:
+    async def get_message(self, peer_id: int, conversation_message_id: int) -> Optional[Message]:
         result = await self.request(
             "messages.getByConversationMessageId",
             {"peer_id": peer_id, "conversation_message_ids": conversation_message_id},
@@ -102,9 +107,9 @@ class Bot:
         peer_id: int,
         text: str = "",
         *,
-        random_id: int | None = None,
-        keyboard: Keyboard | None = None,
-        attachment: str | None = None,
+        random_id: Optional[int] = None,
+        keyboard: Optional[Keyboard] = None,
+        attachment: Optional[str] = None,
         dont_parse_links: bool = False,
     ) -> int:
         if not text and not attachment:
@@ -127,9 +132,9 @@ class Bot:
         peer_id: int,
         text: str,
         *,
-        message_id: int | None = None,
-        conversation_message_id: int | None = None,
-        keyboard: Keyboard | None = None,
+        message_id: Optional[int] = None,
+        conversation_message_id: Optional[int] = None,
+        keyboard: Optional[Keyboard] = None,
         dont_parse_links: bool = False,
     ) -> bool:
         if (message_id is None) == (conversation_message_id is None):
@@ -148,7 +153,7 @@ class Bot:
         return _integer(result) == 1
 
     async def forward_message(
-        self, peer_id: int, message: Message, *, random_id: int | None = None
+        self, peer_id: int, message: Message, *, random_id: Optional[int] = None
     ) -> int:
         # The source is the conversation, which need not be the author's user ID.
         forward = {
@@ -170,7 +175,7 @@ class Bot:
         event_id: str,
         user_id: int,
         peer_id: int,
-        event_data: Mapping[str, JsonValue] | None = None,
+        event_data: Optional[Mapping[str, JsonValue]] = None,
     ) -> bool:
         result = await self.request(
             "messages.sendMessageEventAnswer",

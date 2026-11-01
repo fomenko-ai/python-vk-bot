@@ -1,8 +1,11 @@
 """VK Bots Long Poll recovery without recursion or detached tasks."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
+from typing import Optional
 
 from pydantic import ValidationError
 
@@ -23,7 +26,7 @@ class LongPoll:
         self.bot = bot
         self.group_id = group_id
         self.wait = wait
-        self._server: LongPollServer | None = None
+        self._server: Optional[LongPollServer] = None
 
     async def _connect(self, *, preserve_ts: bool = False) -> None:
         old_ts = self._server.ts if self._server is not None else None
@@ -66,7 +69,7 @@ class LongPoll:
         server.ts = response.ts
         return updates
 
-    async def listen(self) -> AsyncGenerator[Update]:
+    async def listen(self) -> AsyncGenerator[Update, None]:
         """Retry only polling/network acquisition; authentication errors propagate."""
         delay = 1.0
         while True:
@@ -76,7 +79,7 @@ class LongPoll:
                 if error.status_code != 429 and error.status_code < 500:
                     raise
                 updates = None
-            except NetworkError, RateLimitError:
+            except (NetworkError, RateLimitError):
                 updates = None
             if updates is None:
                 logger.warning("Long Poll temporarily unavailable; reconnecting")

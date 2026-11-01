@@ -1,5 +1,9 @@
 """The message fields used by this framework, not the entire VK schema."""
 
+from __future__ import annotations
+
+from typing import Optional
+
 from pydantic import Field, JsonValue
 
 from .base import VKModel
@@ -20,8 +24,8 @@ class Message(VKModel):
     peer_id: int
     conversation_message_id: int
     text: str
-    geo: Geo | None = None
-    payload: str | None = None
+    geo: Optional[Geo] = None
+    payload: Optional[str] = None
     attachments: list[dict[str, JsonValue]] = Field(default_factory=list)
 
 
@@ -33,7 +37,7 @@ class MessageEvent(VKModel):
     user_id: int
     peer_id: int
     event_id: str
-    conversation_message_id: int | None = None
+    conversation_message_id: Optional[int] = None
     # Official schema says string; deployed button events may contain JSON objects.
     # Preserve both without silently decoding or discarding the original value.
     payload: JsonValue = None
@@ -41,9 +45,9 @@ class MessageEvent(VKModel):
 
 class User(VKModel):
     id: int
-    first_name: str | None = None
-    last_name: str | None = None
-    screen_name: str | None = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    screen_name: Optional[str] = None
 
 
 class Keyboard(VKModel):

@@ -2,6 +2,16 @@
 
 All notable changes will be documented here, following Keep a Changelog.
 
+## 0.1.1 - 2026-11-01
+
+### Changed
+
+- The `compat/py39` branch supports Python 3.9–3.14 with compatible annotations, explicit
+  polling cleanup, lazy creation of application locks and Python-dependent dependencies.
+  See [compatibility status](docs/development/python-compatibility.md) for verified versions.
+- Context is a regular dataclass on the compatibility branch.
+- Callback uses an optional timeout backport on Python 3.9/3.10; Python >=3.11 uses asyncio.
+
 ## 0.1.0 - 2026-10-31
 
 ### Added

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -16,7 +18,7 @@ from python_vk_bot.errors import (
     RateLimitError,
 )
 
-from .helpers import MockAPI, form, message
+from .helpers import MockAPI, form, message, timeout
 
 
 @pytest.mark.parametrize("setting", ["authorization", "access_token", "key", "secret", "closed"])
@@ -283,7 +285,7 @@ async def test_request_cancellation_propagates() -> None:
     async with (
         httpx.AsyncClient(transport=httpx.MockTransport(pending)) as client,
         Bot("placeholder", client=client) as bot,
-        asyncio.timeout(2),
+        timeout(2),
     ):
         task = asyncio.create_task(bot.send_message(1, "text"))
         await entered.wait()

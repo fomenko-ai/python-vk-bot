@@ -4,11 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "python-vk-bot"
-version = "0.1.0"
+version = "0.1.1"
 description = "An asynchronous framework for VK community bots."
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = ["httpx>=0.28,<1", "pydantic>=2.12,<3", "pydantic-settings>=2.12,<3"]
+requires-python = ">=3.9"
+dependencies = [
+  "httpx>=0.28,<1",
+  "pydantic>=2.12,<3",
+  "pydantic-settings>=2.11,<2.12; python_version < '3.10'",
+  "pydantic-settings>=2.12,<3; python_version >= '3.10'",
+  "typing-extensions>=4.12,<5",
+]
 authors = [{ name = "Aleksei Fomenko", email = "fomenko_ai@proton.me" }]
 license = "MIT"
 license-files = ["LICENSE"]
@@ -16,15 +22,31 @@ keywords = ["vk", "bot", "asyncio"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Typing :: Typed",
 ]
 
 [project.optional-dependencies]
-callback = ["starlette>=0.49,<1", "uvicorn>=0.38,<1"]
+callback = [
+  "starlette>=0.49,<1",
+  "uvicorn>=0.38,<1",
+  "async-timeout>=5.0.1,<6; python_version < '3.11'",
+]
 
 [dependency-groups]
-dev = ["pytest>=8.4", "pytest-asyncio>=1.2", "pytest-cov>=6", "ruff>=0.14", "ty"]
+dev = [
+  "pytest>=8.4",
+  "pytest-asyncio>=1.2",
+  "pytest-cov>=6",
+  "async-timeout>=5.0.1,<6",
+  "ruff>=0.14",
+  "ty",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["python_vk_bot"]
@@ -43,14 +65,22 @@ asyncio_default_fixture_loop_scope = "function"
 markers = ["integration: opt-in checks requiring VK credentials or external services"]
 
 [tool.ruff]
-target-version = "py314"
+target-version = "py39"
 line-length = 100
+
+[tool.ty.environment]
+# Check the minimum supported language version even when tools run on Python 3.14.
+python-version = "3.9"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "PT", "ANN", "S", "PTH"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["python_vk_bot"]
+
+[tool.ruff.lint.pyupgrade]
+# Pydantic and users can evaluate annotations at runtime on Python 3.9.
+keep-runtime-typing = true
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]

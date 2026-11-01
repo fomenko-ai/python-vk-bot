@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import asyncio
-from contextlib import aclosing
 
 import httpx
 import pytest
@@ -8,7 +9,7 @@ from pydantic import JsonValue
 from python_vk_bot import Bot, LongPoll
 from python_vk_bot.errors import APIError, HTTPError, InvalidResponseError, InvalidUpdateError
 
-from .helpers import MockAPI, connection, event
+from .helpers import MockAPI, aclosing, connection, event, timeout
 
 
 async def test_cursor_and_history_loss(
@@ -88,7 +89,7 @@ async def test_transient_failures_back_off_and_recover(
     api.add({}, status=429)
     api.add({"ts": "11", "updates": [event()]})
     async with bot, aclosing(LongPoll(bot, 42).listen()) as updates:
-        assert (await anext(updates)).event_id == "event-1"
+        assert (await updates.__anext__()).event_id == "event-1"
     assert delays == [1.0, 2.0, 4.0]
 
 
@@ -105,7 +106,7 @@ async def test_rate_limited_session_acquisition_retries(
     api.add(connection())
     api.add({"ts": "11", "updates": [event()]})
     async with bot, aclosing(LongPoll(bot, 42).listen()) as updates:
-        await anext(updates)
+        await updates.__anext__()
     assert delays == [1.0]
 
 
@@ -125,7 +126,7 @@ async def test_backoff_is_bounded_and_resets_after_empty_success(
     api.add({}, status=503)
     api.add({"ts": "12", "updates": [event()]})
     async with bot, aclosing(LongPoll(bot, 42).listen()) as updates:
-        await anext(updates)
+        await updates.__anext__()
     assert delays == [1, 2, 4, 8, 16, 30, 30, 0.1, 1]
 
 
@@ -139,7 +140,7 @@ async def test_authentication_errors_are_not_retried(
         api.add({"error": {"error_code": 5, "error_msg": "unauthorized"}})
     async with bot, aclosing(LongPoll(bot, 42).listen()) as updates:
         with pytest.raises((APIError, HTTPError)):
-            await anext(updates)
+            await updates.__anext__()
     assert len(api.requests) == 1
 
 
@@ -154,8 +155,8 @@ async def test_cancellation_during_backoff(
 
     monkeypatch.setattr("python_vk_bot.long_poll.asyncio.sleep", sleep)
     api.responses.append(httpx.ConnectError("synthetic failure"))
-    async with bot, aclosing(LongPoll(bot, 42).listen()) as updates, asyncio.timeout(2):
-        task = asyncio.create_task(anext(updates))
+    async with bot, aclosing(LongPoll(bot, 42).listen()) as updates, timeout(2):
+        task = asyncio.create_task(updates.__anext__())
         await sleeping.wait()
         task.cancel()
         with pytest.raises(asyncio.CancelledError):

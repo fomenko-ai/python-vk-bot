@@ -43,3 +43,14 @@ PTB's builder accepts token and request settings explicitly. BotSettings is our 
 configuration-loading convenience, not a claimed PTB-equivalent class. It can be inherited
 by user projects; creating clients and managing lifecycle remain separate responsibilities.
 Loading follows [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
+
+## Python compatibility branch
+
+Rechecked stable [Application documentation](https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html)
+on 2026-11-01: reference version **22.8**. PTB still separates initialization, start,
+stop and shutdown; its convenience runner manages the event loop. This branch keeps
+our awaitable runner and caller-owned event loop, with portable cleanup of owned polling.
+Its Python 3.9 target is an independent project decision, not a claim about PTB's
+interpreter support. Handler registration and Context state scopes retain their existing
+mapping; Context is a regular dataclass. See [Python compatibility](../development/python-compatibility.md)
+for implementation choices and verification limits.

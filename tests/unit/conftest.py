@@ -1,10 +1,10 @@
 import os
 import socket
 from collections.abc import AsyncIterator
-from typing import Never
 
 import httpx
 import pytest
+from typing_extensions import Never
 
 from python_vk_bot import Application, Bot
 

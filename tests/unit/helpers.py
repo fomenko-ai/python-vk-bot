@@ -1,10 +1,44 @@
 """Synthetic events and HTTP responses; never use live credentials."""
 
+from __future__ import annotations
+
+import asyncio
 from collections import deque
+from collections.abc import AsyncGenerator, Coroutine
+from contextlib import asynccontextmanager
+from typing import TypeVar
 from urllib.parse import parse_qs
 
 import httpx
+from async_timeout import timeout as timeout
 from pydantic import JsonValue
+
+T = TypeVar("T")
+
+
+@asynccontextmanager
+async def running_task(
+    coroutine: Coroutine[object, object, T],
+) -> AsyncGenerator[asyncio.Task[T], None]:
+    """Own a test task; callers await its result before exiting on success."""
+    task = asyncio.create_task(coroutine)
+    try:
+        yield task
+    finally:
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
+@asynccontextmanager
+async def aclosing(
+    generator: AsyncGenerator[T, None],
+) -> AsyncGenerator[AsyncGenerator[T, None], None]:
+    """Close a test's async generator on every supported interpreter."""
+    try:
+        yield generator
+    finally:
+        await generator.aclose()
 
 
 class MockAPI:

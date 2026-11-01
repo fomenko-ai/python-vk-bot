@@ -1,13 +1,16 @@
 """Reusable HTTP transport; request credentials never become client defaults."""
 
+from __future__ import annotations
+
 import logging
 import re
 from collections.abc import Mapping
 from types import TracebackType
-from typing import Self, cast
+from typing import Optional, Union, cast
 
 import httpx
 from pydantic import JsonValue, SecretStr, ValidationError
+from typing_extensions import Self, TypeAlias
 
 from ._config import TransportConfig
 from .errors import (
@@ -20,7 +23,7 @@ from .errors import (
 )
 from .models.api import APIEnvelope
 
-type Parameter = str | int | float | bool | None
+Parameter: TypeAlias = Union[str, int, float, bool, None]
 
 
 class _RedactQuery(logging.Filter):
@@ -40,7 +43,9 @@ class _RedactQuery(logging.Filter):
 class HTTPTransport:
     """Own a client or borrow an injected client without closing it."""
 
-    def __init__(self, config: TransportConfig, *, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self, config: TransportConfig, *, client: Optional[httpx.AsyncClient] = None
+    ) -> None:
         self.config = config
         self._client = client
         self._owns_client = client is None
@@ -74,9 +79,9 @@ class HTTPTransport:
 
     async def __aexit__(
         self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
+        exc_type: Optional[type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
     ) -> None:
         await self.shutdown()
 
@@ -85,10 +90,10 @@ class HTTPTransport:
         method: str,
         url: str,
         *,
-        data: Mapping[str, str] | None = None,
-        params: Mapping[str, str] | None = None,
-        headers: Mapping[str, str] | None = None,
-        timeout: float | None = None,
+        data: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, str]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        timeout: Optional[float] = None,
     ) -> JsonValue:
         if not self._started or self._client is None:
             raise LifecycleError("Initialize the bot or use its async context manager")

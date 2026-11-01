@@ -1,6 +1,6 @@
 # Project architecture
 
-Status: implemented with network-free regression coverage. Python 3.14 baseline.
+Status: implemented compatibility branch with regression verification on Python 3.9–3.14.
 
 ## Design goals
 
@@ -79,9 +79,9 @@ in each group runs. Generic Handler supports unmodeled events. Filters are synch
 short predicates. Regex uses search; commands match an explicit /command token, without
 Telegram-specific mentions. A message with geo is still a message; use filters.LOCATION.
 
-Context has user_data keyed by from_id/user_id, peer_data keyed by peer_id, and shared
-bot_data. Missing identities receive temporary empty dictionaries. State is process-local,
-not persistent, and does not have an eviction policy. Handlers may implement simple
+Context is a regular dataclass with user_data keyed by from_id/user_id, peer_data keyed
+by peer_id, and shared bot_data. Missing identities receive temporary empty dictionaries.
+State is process-local, not persistent, and does not have an eviction policy. Handlers may implement simple
 conversation levels in these dictionaries. No ConversationHandler or storage backend is
 claimed. Serial dispatch protects these maps only inside awaited handlers, not arbitrary
 tasks created by application users.
@@ -149,6 +149,8 @@ References: [HTTPX async](https://www.python-httpx.org/async/),
 
 ## Verification and limits
 
-The approved implementation has regression coverage; other Python versions were assessed
-after the Python 3.14 suite passed. See [verification results](../development/verification.md).
-No support below Python 3.14, durable queue or distributed state is claimed.
+The 112-test regression suite passes on Python 3.9–3.14. Syntax, dependency installation,
+imports, type checking and package builds have also been checked. See
+[verification results](../development/verification.md) and
+[Python compatibility](../development/python-compatibility.md).
+No durable queue or distributed state is claimed.

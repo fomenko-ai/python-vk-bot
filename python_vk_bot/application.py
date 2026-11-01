@@ -1,12 +1,16 @@
 """Serial dispatch with explicit lifecycle and bounded duplicate suppression."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
-from contextlib import aclosing
+from functools import cached_property
 from types import TracebackType
-from typing import Self
+from typing import Optional
+
+from typing_extensions import Self, TypeAlias
 
 from .bot import Bot
 from .context import Context
@@ -15,8 +19,8 @@ from .handlers import Handler
 from .long_poll import LongPoll
 from .models import Update
 
-type ErrorCallback = Callable[[Update | None, Context], Awaitable[None]]
-type LifecycleHook = Callable[[Application], Awaitable[None]]
+ErrorCallback: TypeAlias = Callable[[Optional[Update], Context], Awaitable[None]]
+LifecycleHook: TypeAlias = Callable[["Application"], Awaitable[None]]
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +32,8 @@ class Application:
         group_id: int,
         *,
         deduplication_size: int = 4096,
-        post_init: LifecycleHook | None = None,
-        post_shutdown: LifecycleHook | None = None,
+        post_init: Optional[LifecycleHook] = None,
+        post_shutdown: Optional[LifecycleHook] = None,
     ) -> None:
         if group_id <= 0 or deduplication_size < 0:
             raise ValueError("group_id must be positive and deduplication_size nonnegative")
@@ -44,13 +48,21 @@ class Application:
         self._deduplication_size = deduplication_size
         self._post_init = post_init
         self._post_shutdown = post_shutdown
-        self._dispatch_lock = asyncio.Lock()
-        self._lifecycle_lock = asyncio.Lock()
         self._initialized = False
         self._context_active = False
         self._running = False
-        self._polling_task: asyncio.Task[None] | None = None
-        self._processing_task: asyncio.Task[object] | None = None
+        self._polling_task: Optional[asyncio.Task[None]] = None
+        self._processing_task: Optional[asyncio.Task[object]] = None
+
+    # Python 3.9 binds locks at construction. First access must happen in async code,
+    # since an ASGI application may be constructed before its event loop starts.
+    @cached_property
+    def _dispatch_lock(self) -> asyncio.Lock:
+        return asyncio.Lock()
+
+    @cached_property
+    def _lifecycle_lock(self) -> asyncio.Lock:
+        return asyncio.Lock()
 
     @property
     def running(self) -> bool:
@@ -127,16 +139,16 @@ class Application:
 
     async def __aexit__(
         self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
+        exc_type: Optional[type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
     ) -> None:
         try:
             await self.shutdown()
         finally:
             self._context_active = False
 
-    def _context(self, update: Update | None, error: Exception | None = None) -> Context:
+    def _context(self, update: Optional[Update], error: Optional[Exception] = None) -> Context:
         user_id = update.user_id if update is not None else None
         peer_id = update.peer_id if update is not None else None
         return Context(
@@ -148,7 +160,7 @@ class Application:
             error=error,
         )
 
-    async def _report_error(self, update: Update | None, error: Exception) -> None:
+    async def _report_error(self, update: Optional[Update], error: Exception) -> None:
         context = self._context(update, error)
         logger.error("Update processing failed (%s)", type(error).__name__)
         for callback in self._error_handlers:
@@ -188,7 +200,8 @@ class Application:
             return True
 
     async def _poll(self, long_poll: LongPoll) -> None:
-        async with aclosing(long_poll.listen()) as updates:
+        updates = long_poll.listen()
+        try:
             async for update in updates:
                 if not self._running:
                     break
@@ -199,6 +212,8 @@ class Application:
                     logger.warning("Skipping failed update in polling mode")
                 if not self._running:
                     break
+        finally:
+            await updates.aclose()
 
     async def run_polling(self, *, wait: int = 25) -> None:
         """Run until stop or cancellation; own startup and shutdown, not the event loop."""
@@ -209,13 +224,18 @@ class Application:
             task = asyncio.create_task(self._poll(long_poll), name="vk-long-poll")
             self._polling_task = task
             try:
-                await task
-            except asyncio.CancelledError:
-                current = asyncio.current_task()
-                if current is not None and current.cancelling():
-                    raise
+                # Waiting does not forward caller cancellation to the child. A stop()
+                # cancellation belongs to the child; external cancellation still propagates.
+                await asyncio.wait({task})
+                if not task.cancelled():
+                    task.result()
             except Exception as error:
                 await self._report_error(None, error)
                 raise
             finally:
-                self._polling_task = None
+                try:
+                    if not task.done():
+                        task.cancel()
+                    await asyncio.gather(task, return_exceptions=True)
+                finally:
+                    self._polling_task = None

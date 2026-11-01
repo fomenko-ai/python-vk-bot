@@ -4,6 +4,9 @@ Status: accepted
 Date: 2026-10-31
 Task: modernize-framework
 
+The Python baseline is superseded on `compat/py39` by
+[0002](0002-python39-compatibility-branch.md). The other architectural choices remain accepted.
+
 ## Context
 
 This new library needs asynchronous HTTP, VK method wrappers, event delivery, dispatch,

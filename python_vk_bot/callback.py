@@ -1,11 +1,14 @@
 """Framework-neutral Callback authentication and an optional Starlette HTTP adapter."""
 
+from __future__ import annotations
+
 import asyncio
 import hmac
 import json
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from pydantic import JsonValue, SecretStr
 
@@ -24,8 +27,8 @@ class Callback:
         self,
         application: Application,
         *,
-        secret: str | SecretStr,
-        confirmation_code: str | SecretStr,
+        secret: Union[str, SecretStr],
+        confirmation_code: Union[str, SecretStr],
     ) -> None:
         self.application = application
         self._secret = secret if isinstance(secret, SecretStr) else SecretStr(secret)
@@ -70,12 +73,17 @@ class Callback:
         from starlette.responses import PlainTextResponse
         from starlette.routing import Route
 
+        if sys.version_info >= (3, 11):
+            from asyncio import timeout
+        else:
+            from async_timeout import timeout
+
         if max_body_bytes <= 0 or max_pending <= 0 or request_timeout <= 0:
             raise ValueError("Callback resource limits must be positive")
         pending = 0
 
         @asynccontextmanager
-        async def lifespan(app: Starlette) -> AsyncGenerator[None]:
+        async def lifespan(app: Starlette) -> AsyncGenerator[None, None]:
             async with self.application:
                 yield
 
@@ -85,7 +93,7 @@ class Callback:
                 return PlainTextResponse("busy", status_code=503)
             pending += 1
             try:
-                async with asyncio.timeout(request_timeout):
+                async with timeout(request_timeout):
                     body = bytearray()
                     async for chunk in request.stream():
                         if len(body) + len(chunk) > max_body_bytes:
@@ -93,7 +101,7 @@ class Callback:
                         body.extend(chunk)
                     try:
                         payload = json.loads(body)
-                    except ValueError, UnicodeDecodeError:
+                    except (ValueError, UnicodeDecodeError):
                         return PlainTextResponse("invalid JSON", status_code=400)
                     if not isinstance(payload, dict):
                         return PlainTextResponse("invalid event", status_code=400)
@@ -102,7 +110,7 @@ class Callback:
                 return PlainTextResponse("forbidden", status_code=403)
             except InvalidUpdateError:
                 return PlainTextResponse("invalid event", status_code=400)
-            except TimeoutError, LifecycleError:
+            except (asyncio.TimeoutError, LifecycleError):
                 return PlainTextResponse("unavailable", status_code=503)
             except ClientDisconnect:
                 return PlainTextResponse("disconnected", status_code=400)

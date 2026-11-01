@@ -1,7 +1,10 @@
 """Small synchronous predicates; filter execution must not perform blocking I/O."""
 
+from __future__ import annotations
+
 import re
 from collections.abc import Callable
+from typing import Union
 
 from .models import Update
 
@@ -26,7 +29,7 @@ class Filter:
 class Regex(Filter):
     """Search the message text using a compiled regular expression."""
 
-    def __init__(self, pattern: str | re.Pattern[str]) -> None:
+    def __init__(self, pattern: Union[str, re.Pattern[str]]) -> None:
         compiled = re.compile(pattern)
         super().__init__(
             lambda update: (

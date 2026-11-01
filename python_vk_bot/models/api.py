@@ -1,5 +1,9 @@
 """API envelope and Long Poll response boundaries."""
 
+from __future__ import annotations
+
+from typing import Optional
+
 from pydantic import Field, JsonValue, SecretStr, field_validator
 
 from .base import VKModel
@@ -12,7 +16,7 @@ class APIErrorData(VKModel):
 
 class APIEnvelope(VKModel):
     response: JsonValue = None
-    error: APIErrorData | None = Field(default=None, repr=False)
+    error: Optional[APIErrorData] = Field(default=None, repr=False)
 
 
 class LongPollServer(VKModel):
@@ -27,9 +31,9 @@ class LongPollServer(VKModel):
 
 
 class LongPollResponse(VKModel):
-    failed: int | None = None
-    ts: str | None = None
-    updates: list[dict[str, JsonValue]] | None = None
+    failed: Optional[int] = None
+    ts: Optional[str] = None
+    updates: Optional[list[dict[str, JsonValue]]] = None
 
     @field_validator("ts", mode="before")
     @classmethod
