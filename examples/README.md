@@ -37,6 +37,10 @@ smallest example of `Application`, `BotSettings`, `MessageHandler` and `filters.
 
 ## Ordinary and inline keyboards
 
+The example constructs Pydantic `TextButton` and `CallbackButton` objects and uses
+`ButtonColor` enum members. Dictionary payloads are JSON encoded by the library.
+See the [keyboard API](../docs/development/keyboards.md) for model payloads and serialization.
+
 ```bash
 uv run python examples/keyboards.py
 ```

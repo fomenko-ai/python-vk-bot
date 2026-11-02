@@ -1,5 +1,21 @@
 # Verification
 
+## Typed keyboard verification (2026-11-02)
+
+Checked on CPython 3.14.4, Linux x86_64. The full unit suite has **269 passing tests**,
+including 23 new typed-keyboard cases. They cover text/callback wire envelopes,
+dictionary/model/string/absent payloads, payload aliases and subclass fields, enum
+conversion and assignment validation, invalid fields, non-finite JSON rejection,
+mixed raw/typed keyboards and mocked messages.send/messages.edit request bodies.
+The integration helper narrows raw dictionary buttons before accessing action fields.
+
+Locked synchronization with all extras, Ruff lint/format, whole-project ty checking
+and `git diff --check` passed. Wheel and sdist builds passed for the main-code change.
+No live VK execution or additional Python-version assessment was performed for typed
+buttons; these tests verify local validation and serialization against synthetic responses.
+
+## Media verification (2026-11-01)
+
 Checked on 2026-11-01, Linux x86_64, CPython 3.14.4. The expanded regression suite has
 **240 passing tests**: 109 existing cases and 131 media/model/example cases. Locked
 dependency synchronization with the Callback extra, Ruff lint/format, ty and

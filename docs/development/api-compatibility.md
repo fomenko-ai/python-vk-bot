@@ -1,6 +1,6 @@
 # VK API support
 
-Verification date: **2026-11-01** (media work). Implementation target: **5.199**, represented as a string.
+Verification date: **2026-11-02** (typed keyboards). Implementation target: **5.199**, represented as a string.
 The official [version history](https://dev.vk.com/ru/reference/versions) lists 5.199 as
 the newest documented version. Its entry describes internal changes without a method,
 parameter, or response change. The official [VKCOM schema](https://github.com/VKCOM/vk-api-schema)
@@ -85,8 +85,8 @@ The event API version is configured there independently from the outbound reques
 
 - The schema describes message_event.payload as a string; deployed integrations may use
   JSON objects. The model intentionally preserves either form without automatic decoding.
-- Additional message and keyboard fields are retained, not fully validated. Keyboard action
-  dictionaries remain caller-supplied VK structures; unsupported semantics are not invented.
+- Additional message and keyboard fields are retained, not fully validated. Keyboard accepts
+  typed text/callback buttons and raw VK action dictionaries; raw actions are caller-controlled.
 - No schema generator is justified for the small current coverage.
 - Network-free regression tests cover the implemented behavior; live-token integration is not run.
   See [verification results](verification.md).
@@ -128,8 +128,25 @@ content; it does not claim practical support for VK's maximum document size. The
 example is implemented but has not been run against VK. See [media API](media-api.md)
 for detailed contracts, published upload limits, source links and remaining verification.
 
+## Typed keyboard verification
+
+On **2026-11-02**, direct HTTPS retrieval of the official version history confirmed
+5.199 as its newest documented entry. The keyboard guide was also retrieved directly;
+the web reader could not open these pages. The VKCOM message object schema was checked
+and still declares 5.199. No API version or dependency change is made.
+
+Text/callback actions require a label and accept a string payload. Typed button models
+encode dictionary/Pydantic payloads and emit the nested action plus color envelope.
+ButtonColor follows the guide's primary/secondary/positive/negative list; the schema
+uses default instead of secondary. This discrepancy is recorded rather than introducing
+an alias or claiming that both spellings are valid. Raw dictionaries remain unrestricted
+VK structures. Numeric limits and live community delivery remain unverified; no new
+numeric validators or authenticated calls were introduced. See [keyboards](keyboards.md).
+
 ## Sources
 
+- [Keyboard guide](https://dev.vk.com/ru/api/bots/development/keyboard)
+- [Message and keyboard object schema](https://github.com/VKCOM/vk-api-schema/blob/master/messages/objects.json)
 - [VK versions](https://dev.vk.com/ru/reference/versions)
 - [messages.send](https://dev.vk.com/ru/method/messages.send)
 - [messages.edit](https://dev.vk.com/ru/method/messages.edit)

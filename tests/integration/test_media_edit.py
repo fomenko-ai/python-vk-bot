@@ -48,7 +48,9 @@ def keyboard_label(message: Message) -> str:
     assert isinstance(raw, dict)
     parsed = Keyboard.model_validate(raw)
     assert parsed.inline
-    action = parsed.buttons[0][0]["action"]
+    button = parsed.buttons[0][0]
+    assert isinstance(button, dict)
+    action = button["action"]
     assert isinstance(action, dict)
     label = action["label"]
     assert isinstance(label, str)

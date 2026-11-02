@@ -26,6 +26,7 @@ python_vk_bot/
     api.py          API errors, envelopes and Long Poll responses
     attachments.py  typed media envelopes, raw fallback and identifier serialization
     messages.py     messages, geo, users and keyboard structures
+    keyboards.py    typed outgoing buttons, enums and VK JSON serialization
     events.py       event envelope, typed views and raw object access
   long_poll.py      session acquisition, cursor and recovery
   application.py    lifecycle, ordered serial dispatch and duplicate cache
@@ -137,8 +138,11 @@ users do not need to supply them. See [settings usage](../../README.md#settings)
 Pydantic v2 validates configuration, API envelopes, used response structures and event
 boundaries. Unknown VK fields survive. Update.object retains the original JSON object,
 with parsed message/message_event views for handlers. There is intentionally no generated
-model collection or repeated validation in each handler. Keyboard validates the container;
-VK action dictionaries and extra capabilities remain extensible.
+model collection or repeated validation in each handler. Keyboard accepts typed TextButton
+and CallbackButton models alongside raw VK action dictionaries. Typed buttons validate
+their fields and serialize flat inputs into VK action envelopes in JSON mode. ButtonColor
+and ButtonType expose the supported values as StrEnum members. Raw action dictionaries
+and extra capabilities remain extensible. See the [keyboard API](../development/keyboards.md).
 
 HTTPX AsyncClient provides async pooling, explicit timeouts, injectable transports and
 MockTransport for network-free regression tests. aiohttp ClientSession also supports these

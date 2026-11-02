@@ -2,6 +2,14 @@
 
 All notable changes will be documented here, following Keep a Changelog.
 
+## 0.3.0 - 2026-11-02
+
+### Added
+
+- Pydantic `TextButton` and `CallbackButton` models with automatic dictionary/model
+  payload serialization and `ButtonColor` / `ButtonType` enums. Keyboards also accept
+  raw VK button dictionaries. See the [keyboard API](docs/development/keyboards.md).
+
 ## 0.2.0 - 2026-11-01
 
 ### Added

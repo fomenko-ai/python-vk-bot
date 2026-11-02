@@ -1,5 +1,24 @@
 # python-telegram-bot design reference
 
+## Keyboard API reference
+
+Rechecked on **2026-11-02** against stable **PTB 22.8**:
+
+- [Inline keyboard example](https://docs.python-telegram-bot.org/en/v22.8/examples.inlinekeyboard.html)
+- [Ordinary keyboard example](https://docs.python-telegram-bot.org/en/v22.8/examples.conversationbot.html)
+- [InlineKeyboardMarkup](https://docs.python-telegram-bot.org/en/v22.8/telegram.inlinekeyboardmarkup.html)
+
+PTB's button objects arranged in rows inform TextButton and CallbackButton. VK's
+Keyboard retains inline/one_time settings, action types, colors and JSON payload
+semantics. ButtonColor and ButtonType are StrEnum values. Flat Pydantic constructors
+serialize to VK action envelopes in JSON mode. Raw VK dictionaries remain accepted.
+Callback buttons emit message_event rather than Telegram callback queries. No Telegram
+callback-data cache, string keyboard shorthand or layout builder is implemented.
+See the [keyboard contract](../development/keyboards.md) and
+[decision](../decisions/0003-typed-keyboard-buttons.md).
+
+## Framework reference
+
 Verified on 2026-10-31 against stable documentation for **22.8** and its tagged source:
 
 - [Application](https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html)

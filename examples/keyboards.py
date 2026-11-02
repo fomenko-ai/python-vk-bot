@@ -13,11 +13,14 @@ from python_vk_bot import (
     Application,
     Bot,
     BotSettings,
+    ButtonColor,
+    CallbackButton,
     CommandHandler,
     Context,
     Keyboard,
     MessageEventHandler,
     MessageHandler,
+    TextButton,
     Update,
 )
 from python_vk_bot.errors import VKError
@@ -29,14 +32,7 @@ def regular_keyboard() -> Keyboard:
         one_time=False,
         buttons=[
             [
-                {
-                    "action": {
-                        "type": "text",
-                        "label": label,
-                        "payload": json.dumps({"example": "keyboards", "action": action}),
-                    },
-                    "color": "secondary",
-                }
+                TextButton(label=label, payload={"example": "keyboards", "action": action})
                 for label, action in row
             ]
             for row in [
@@ -52,18 +48,16 @@ def inline_keyboard() -> Keyboard:
         inline=True,
         buttons=[
             [
-                {
-                    "action": {
-                        "type": "callback",
-                        "label": label,
-                        "payload": json.dumps({"example": "keyboards", "action": action}),
-                    },
-                    "color": color,
-                }
-                for label, action, color in [
-                    ("Подтвердить", "confirm", "positive"),
-                    ("Отмена", "cancel", "negative"),
-                ]
+                CallbackButton(
+                    label="Подтвердить",
+                    payload={"example": "keyboards", "action": "confirm"},
+                    color=ButtonColor.POSITIVE,
+                ),
+                CallbackButton(
+                    label="Отмена",
+                    payload={"example": "keyboards", "action": "cancel"},
+                    color=ButtonColor.NEGATIVE,
+                ),
             ]
         ],
     )
