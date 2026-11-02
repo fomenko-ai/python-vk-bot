@@ -1,6 +1,6 @@
 # Verification
 
-Checked on 2026-11-01 on Linux x86_64, branch `compat/py39`. All **243 regression tests**
+Checked on 2026-11-02 on Linux x86_64, branch `compat/py39`. All **272 regression tests**
 pass on each interpreter below. Tests were adapted after explicit user approval of the
 production changes. Dependency installation uses uv.lock with the Callback extra and
 configured development group.
@@ -9,16 +9,16 @@ configured development group.
 
 | CPython | Package syntax | Locked installation and import | Full regression suite |
 | --- | --- | --- | --- |
-| 3.9.25 | Passed | Passed | 243 passed |
-| 3.10.20 | Passed | Passed | 243 passed |
-| 3.11.15 | Passed | Passed | 243 passed |
-| 3.12.13 | Passed | Passed | 243 passed |
-| 3.13.14 | Passed | Passed | 243 passed |
-| 3.14.4 | Passed | Passed | 243 passed |
+| 3.9.25 | Passed | Passed | 272 passed |
+| 3.10.20 | Passed | Passed | 272 passed |
+| 3.11.15 | Passed | Passed | 272 passed |
+| 3.12.13 | Passed | Passed | 272 passed |
+| 3.13.14 | Passed | Passed | 272 passed |
+| 3.14.4 | Passed | Passed | 272 passed |
 
 The Python 3.14 suite passed before the older-runtime regression runs. The runtime matrix
 uses isolated uv environments, leaving the contributor .venv on Python 3.14.
-The syntax script compiles all 18 package sources without importing dependencies or
+The syntax script compiles all 19 package sources without importing dependencies or
 writing bytecode. Syntax success is only one part of the runtime assessment.
 
 ```bash
@@ -36,18 +36,32 @@ connections and DNS lookups. Missing interpreters, dependency resolution/install
 failures and failed tests result in a nonzero exit code. Neither script is part of default
 pytest discovery. The runtime script disables pytest's persistent cache and bytecode writes.
 
+## Typed keyboard transfer
+
+Transferred from main commit `2740cfd3d6e9ca49d1aa8db42b0dfb1071f1d455`, including
+version 0.3.0 and changelog date 2026-11-02. Python-specific dependencies and
+interpreter targets are retained. This document records the compatibility branch's
+own verification results.
+
+The 23 new cases cover text/callback action serialization, structured and encoded
+payloads, aliases/subclass fields, enum validation, invalid fields and assignments,
+mixed raw/typed keyboards, non-finite JSON rejection and mocked send/edit requests.
+Portable enum tests additionally check value-based `str()` on every interpreter.
+The integration helper narrows raw dictionary buttons before accessing their fields.
+No live VK operations were run. See the [keyboard API](keyboards.md).
+
 ## Configured checks
 
 | Check | Result |
 | --- | --- |
-| `uv lock` | Not rerun; transfer does not change dependency metadata |
+| `uv lock` | Passed; synchronized project version 0.3.0 without dependency changes |
 | `uv sync --locked --all-extras` | Passed |
 | `uv run ruff check .` | Passed; Python 3.9 target for production and tests |
 | `uv run ruff format --check .` | Passed |
 | `uv run ty check` | Passed; Python 3.9 language target in the contributor environment |
-| `uv run pytest --strict-markers` | Passed on Python 3.14.4; 243 tests |
-| Runtime matrix | Passed; 243 tests on each Python 3.9–3.14 interpreter |
-| `uv build --out-dir <temporary-directory>` | Not rerun for this transfer |
+| `uv run pytest --strict-markers` | Passed on Python 3.14.4; 272 tests |
+| Runtime matrix | Passed; 272 tests on each Python 3.9–3.14 interpreter |
+| `uv build --out-dir <temporary-directory>` | Passed; wheel and sdist report version 0.3.0 |
 | `git diff --check` | Passed |
 | Live VK integration | Not run; opt-in, requires credentials |
 | Minimum dependency combinations | Not run; verified the resolved lockfile sets |

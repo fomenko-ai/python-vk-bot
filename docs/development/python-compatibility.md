@@ -5,7 +5,7 @@
 and other Python implementations have not been verified. The default contributor
 interpreter remains Python 3.14.
 
-The library installs, imports and passes all 243 regression tests on the checked
+The library installs, imports and passes all 272 regression tests on the checked
 3.9–3.14 interpreters. Before the media API transfer, both base wheel installation and sdist installation with the
 Callback extra were also checked in clean Python 3.9 consumer environments.
 See [exact results and reproduction commands](verification.md).
@@ -51,6 +51,13 @@ dependencies, Python targets and lifecycle safeguards are retained.
 
 ## Runtime choices
 
+- Typed keyboard buttons are transferred from main commit
+  `2740cfd3d6e9ca49d1aa8db42b0dfb1071f1d455`. They use `typing.Union` and
+  `typing_extensions.TypeAlias`. Button enums use native `StrEnum` on Python 3.11+
+  and `str`/`Enum` with value-based `str()` on Python 3.9/3.10; serialized VK values
+  and Pydantic validation are equivalent across the checked runtimes. Package version
+  is 0.3.0, with the changelog dated 2026-11-02. Python-specific dependencies and
+  interpreter targets remain configured for this branch.
 - Annotations use Optional/Union, explicit forward references and postponed evaluation.
   Self and TypeAlias come from typing_extensions. Pydantic remains at v2 boundaries.
 - Context is a regular dataclass with the same fields, defaults and error repr policy.

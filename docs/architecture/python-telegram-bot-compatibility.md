@@ -1,5 +1,7 @@
 # python-telegram-bot design reference
 
+## Framework reference
+
 Verified on 2026-10-31 against stable documentation for **22.8** and its tagged source:
 
 - [Application](https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html)
@@ -38,22 +40,13 @@ Poll and Callback feed the same validated update/dispatch pipeline but have diff
 acknowledgement and resource semantics. No Telegram transport, permission, keyboard,
 or message identifier assumptions are copied. No PTB implementation code is copied.
 
+### Settings
+
 Settings addition reviewed on 2026-10-31 against the same PTB 22.8 reference.
 PTB's builder accepts token and request settings explicitly. BotSettings is our reusable
 configuration-loading convenience, not a claimed PTB-equivalent class. It can be inherited
 by user projects; creating clients and managing lifecycle remain separate responsibilities.
 Loading follows [pydantic-settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
-
-## Python compatibility branch
-
-Rechecked stable [Application documentation](https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html)
-on 2026-11-01: reference version **22.8**. PTB still separates initialization, start,
-stop and shutdown; its convenience runner manages the event loop. This branch keeps
-our awaitable runner and caller-owned event loop, with portable cleanup of owned polling.
-Its Python 3.9 target is an independent project decision, not a claim about PTB's
-interpreter support. Handler registration and Context state scopes retain their existing
-mapping; Context is a regular dataclass. See [Python compatibility](../development/python-compatibility.md)
-for implementation choices and verification limits.
 
 ## Media API
 
@@ -84,3 +77,32 @@ must retain their server-issued query parameters. Multipart uploads therefore re
 default client query parameters and Content-Type instead of rewriting a borrowed
 client's settings. Typed attachment views deep-copy raw JSON, including unknown
 nested fields; they remain independent snapshots rather than mutable message state.
+
+## Keyboard API reference
+
+Rechecked on **2026-11-02** against stable **PTB 22.8**:
+
+- [Inline keyboard example](https://docs.python-telegram-bot.org/en/v22.8/examples.inlinekeyboard.html)
+- [Ordinary keyboard example](https://docs.python-telegram-bot.org/en/v22.8/examples.conversationbot.html)
+- [InlineKeyboardMarkup](https://docs.python-telegram-bot.org/en/v22.8/telegram.inlinekeyboardmarkup.html)
+
+PTB's button objects arranged in rows inform TextButton and CallbackButton. VK's
+Keyboard retains inline/one_time settings, action types, colors and JSON payload
+semantics. ButtonColor and ButtonType are string-valued enums, using StrEnum on
+Python 3.11+ and str/Enum with value-based str() on Python 3.9/3.10. Flat Pydantic constructors
+serialize to VK action envelopes in JSON mode. Raw VK dictionaries remain accepted.
+Callback buttons emit message_event rather than Telegram callback queries. No Telegram
+callback-data cache, string keyboard shorthand or layout builder is implemented.
+See the [keyboard contract](../development/keyboards.md) and
+[decision](../decisions/0003-typed-keyboard-buttons.md).
+
+## Python compatibility branch
+
+Rechecked stable [Application documentation](https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html)
+on 2026-11-01: reference version **22.8**. PTB still separates initialization, start,
+stop and shutdown; its convenience runner manages the event loop. This branch keeps
+our awaitable runner and caller-owned event loop, with portable cleanup of owned polling.
+Its Python 3.9 target is an independent project decision, not a claim about PTB's
+interpreter support. Handler registration and Context state scopes retain their existing
+mapping; Context is a regular dataclass. See [Python compatibility](../development/python-compatibility.md)
+for implementation choices and verification limits.

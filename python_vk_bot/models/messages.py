@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import Field, JsonValue
 
 from .attachments import Attachment, parse_attachment
 from .base import VKModel
+from .keyboards import TypedButton
 
 
 class Coordinates(VKModel):
@@ -57,7 +58,7 @@ class User(VKModel):
 
 
 class Keyboard(VKModel):
-    buttons: list[list[dict[str, JsonValue]]]
+    buttons: list[list[Union[TypedButton, dict[str, JsonValue]]]]
     one_time: bool = False
     inline: bool = False
 
