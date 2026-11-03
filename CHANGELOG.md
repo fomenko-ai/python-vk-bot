@@ -2,6 +2,13 @@
 
 All notable changes will be documented here, following Keep a Changelog.
 
+## Unreleased
+
+### Fixed
+
+- Concurrent graceful stop and polling-runner cancellation wait for Long Poll cleanup
+  without interrupting it with a second cancellation request.
+
 ## 0.4.0 - 2026-11-03
 
 ### Added

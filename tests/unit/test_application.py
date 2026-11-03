@@ -627,3 +627,60 @@ async def test_repeated_event_cancellation_waits_for_handler_cleanup(
             await task
         assert await application.process_update(update)
     assert calls == 2
+
+
+@pytest.mark.parametrize("stop_first", [True, False])
+async def test_stop_and_runner_cancellation_share_polling_cleanup(stop_first: bool) -> None:
+    entered, cleaning, release, cleaned = (asyncio.Event() for _ in range(4))
+
+    async def pending(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "api.vk.ru":
+            return httpx.Response(200, json=connection())
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cleaning.set()
+            await release.wait()
+            cleaned.set()
+        return httpx.Response(200, json={"ts": "11", "updates": []})
+
+    before = asyncio.all_tasks()
+    async with (
+        httpx.AsyncClient(transport=httpx.MockTransport(pending)) as client,
+        asyncio.timeout(2),
+    ):
+        application = Application(Bot("placeholder", client=client), 42)
+        async with asyncio.TaskGroup() as runners:
+            runner = runners.create_task(application.run_polling())
+            try:
+                await entered.wait()
+                if not stop_first:
+                    runner.cancel()
+                    await cleaning.wait()
+                async with asyncio.TaskGroup() as stoppers:
+                    stopping = stoppers.create_task(application.stop())
+                    try:
+                        if stop_first:
+                            await cleaning.wait()
+                            runner.cancel()
+                        # Let both owners reach their wait for the blocked cleanup.
+                        for _ in range(5):
+                            await asyncio.sleep(0)
+                        runner.cancel()
+                        for _ in range(5):
+                            await asyncio.sleep(0)
+                        assert not runner.done()
+                        assert not stopping.done()
+                        assert not cleaned.is_set()
+                    finally:
+                        release.set()
+                    with pytest.raises(asyncio.CancelledError):
+                        await runner
+                    await stopping
+            finally:
+                release.set()
+        assert cleaned.is_set()
+        assert not application.running
+        assert not client.is_closed
+    assert asyncio.all_tasks() == before

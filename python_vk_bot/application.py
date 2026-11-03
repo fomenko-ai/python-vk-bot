@@ -22,7 +22,7 @@ type LifecycleHook = Callable[[Application], Awaitable[None]]
 logger = logging.getLogger(__name__)
 
 
-async def _await_owned[T](task: asyncio.Task[T]) -> T:
+async def _await_owned[T](task: asyncio.Future[T]) -> T:
     """Finish owned cleanup even on repeated caller cancellation, then propagate it."""
     interrupted = False
     while not task.done():
@@ -76,6 +76,7 @@ class Application:
         self._tasks: dict[asyncio.Task[object], bool] = {}
         self._polling_task: asyncio.Task[None] | None = None
         self._polling_waiting = False
+        self._polling_cancel_requested = False
         self._consumer_task: asyncio.Task[None] | None = None
         self._processing_task: asyncio.Task[bool] | None = None
         self._finishing_handler: asyncio.Task[bool] | None = None
@@ -185,7 +186,7 @@ class Application:
         polling = self._polling_task
         if polling is not None:
             if not self._polling_waiting:
-                polling.cancel()
+                self._cancel_polling(polling)
             await asyncio.gather(polling, return_exceptions=True)
         if self._finishing_handler is not None:
             await asyncio.gather(self._finishing_handler, return_exceptions=True)
@@ -470,6 +471,12 @@ class Application:
                 if not self._running:
                     break
 
+    def _cancel_polling(self, task: asyncio.Task[None]) -> None:
+        """Request cancellation once; another owner must await the same cleanup."""
+        if not self._polling_cancel_requested and not task.done():
+            self._polling_cancel_requested = True
+            task.cancel()
+
     async def run_polling(self, *, wait: int = 25) -> None:
         """Run until stop/cancellation; own lifecycle, not the caller's event loop."""
         if self._polling_task is not None:
@@ -478,14 +485,17 @@ class Application:
         async with self:
             task = asyncio.create_task(self._poll(long_poll), name="vk-long-poll")
             self._polling_task = task
+            self._polling_cancel_requested = False
             try:
-                await task
-            except asyncio.CancelledError:
-                current = asyncio.current_task()
-                if current is not None and current.cancelling():
-                    raise
+                await asyncio.wait({task})
+                if not task.cancelled():
+                    task.result()
             except Exception as error:
                 await self._submit(_QueueItem(None, error=error))
                 raise
             finally:
-                self._polling_task = None
+                try:
+                    self._cancel_polling(task)
+                    await _await_owned(asyncio.gather(task, return_exceptions=True))
+                finally:
+                    self._polling_task = None
