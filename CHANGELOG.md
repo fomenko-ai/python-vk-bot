@@ -2,6 +2,24 @@
 
 All notable changes will be documented here, following Keep a Changelog.
 
+## 0.4.0 - 2026-11-03
+
+### Added
+
+- `ApplicationHandlerStop` to finish the current event successfully and skip later groups.
+- `TypeHandler` and a bounded `Application.update_queue` for internal Python objects and
+  VK updates, with explicit user/peer state scopes and `Context.event`.
+- `Application.create_task` for owned finite tasks and workers cancelled on stop.
+- A once-per-run `post_stop` hook before Bot shutdown, and a local background-result example.
+
+### Changed
+
+- Event processing uses a unified serial FIFO. Callback acknowledgement still waits for
+  dispatch; request cancellation cancels that event's pending or active execution.
+- **Breaking:** after `stop()`, complete `shutdown()` and `initialize()` before starting
+  another run. Registration stays closed until shutdown completes. See the
+  [lifecycle and queue contracts](docs/development/event-processing.md#lifecycle-and-cleanup).
+
 ## 0.3.0 - 2026-11-02
 
 ### Added

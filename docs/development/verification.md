@@ -1,5 +1,76 @@
 # Verification
 
+## Unified queue regression verification (2026-11-03)
+
+After the user approved the test stage, **51 new cases** were added on CPython 3.14.4:
+
+- 29 background-event cases: mixed VK/internal FIFO, type matching, explicit state scopes,
+  stop exceptions, deduplication, error context, bounded admission, waiting producers,
+  managed-task failure/cancellation and publishing results during shutdown.
+- 14 lifecycle cases: manual/context/polling hook order, Bot availability in post_stop,
+  cleanup errors, reentry guards, concurrent shutdown, repeated cancellation, restart
+  and graceful versus cancelled active Long Poll dispatch. Existing startup-failure cases
+  also verify that post_stop is not called for failed initialization.
+- 4 Callback cases: HTTP timeout before admission and while queued, authentication and
+  confirmation during queue overload, successful handler-stop acknowledgement, and ASGI
+  lifespan draining results before post_stop.
+- 4 background-example cases: local computation, stop/deduplication, outgoing messages,
+  scoped state and shutdown drain; main() also runs with mocked HTTP and Long Poll.
+
+The full unit suite passed: **320 tests**. Narrow suites passed first. No production-code
+fixes were needed during this test stage. Tests use MockTransport/ASGITransport and the
+existing socket/DNS isolation fixture; no live network or credentials were used.
+
+| Check | Result |
+| --- | --- |
+| `uv sync --locked --extra callback` | Passed |
+| `uv run --no-sync ruff check .` | Passed |
+| `uv run --no-sync ruff format --check .` | Passed, 69 files |
+| `uv run --no-sync ty check` | Passed |
+| `uv run --no-sync pytest --strict-markers` | Passed, 320 tests |
+| `git diff --check` | Passed |
+| Live VK / integration checks | Not run; outside this isolated unit-test task |
+| Other Python versions | Not run; verification target is Python 3.14 |
+
+The unrelated staged interactive-map edit is preserved. No commit, publication or
+compatibility-branch transfer was performed.
+
+## Version and documentation update (2026-11-03)
+
+The user approved package version **0.4.0** and changelog date **2026-11-03**.
+`uv lock` updated only the local package version; `uv sync --locked --extra callback`
+rebuilt and installed it successfully. Ruff lint/format (67 files), ty,
+`pytest --strict-markers` (**269 existing tests**) and `git diff --check` passed
+on Python 3.14.4. No test files changed and no publication was performed.
+
+The README background-task overview is two paragraphs after Media and location;
+detailed contracts remain in [the event processing guide](event-processing.md).
+The requested external-project references were removed from documentation and the
+local task record. A case-insensitive search including ignored project files found
+no remaining matches, excluding Git internals, virtual environments and tool caches.
+At this checkpoint, new regression tests awaited main-code approval; see the completed
+regression verification above for the subsequent test stage.
+
+## Unified queue main-code verification (2026-11-03)
+
+On CPython 3.14.4, the existing Application, Callback and Long Poll suite passed
+**52 tests**, followed by the full existing suite: **269 tests passed**. No tests
+were added or edited at this checkpoint, pending approval of the implemented
+main code. These results establish existing-test compatibility, not comprehensive
+coverage of the new queue/task/lifecycle contracts.
+
+Passed: `uv sync --locked --extra callback`, `ruff check .`, `ruff format --check .`
+(67 files), `ty check`, `pytest --strict-markers` and `git diff --check`. Checks after
+synchronization used `uv run --no-sync` to retain the optional Callback dependencies.
+A final verification retry ran outside the sandbox after uv could not write its
+cache lock; all checks then passed. Dependency metadata and uv.lock are unchanged.
+
+Not run at this checkpoint: new focused regression scenarios, the mocked background-result
+example, live VK/integration checks, and other Python versions. The later regression entry
+above covers the new scenarios/example; live services remain outside this task.
+The pre-existing staged interactive-map edit was preserved. No commit or release
+was made and no compatibility-branch transfer was started.
+
 ## Typed keyboard verification (2026-11-02)
 
 Checked on CPython 3.14.4, Linux x86_64. The full unit suite has **269 passing tests**,

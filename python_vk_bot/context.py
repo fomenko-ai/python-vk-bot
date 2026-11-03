@@ -17,3 +17,4 @@ class Context:
     peer_data: dict[str, object]
     bot_data: dict[str, object]
     error: Exception | None = field(default=None, repr=False)
+    event: object | None = field(default=None, repr=False)
