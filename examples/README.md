@@ -25,6 +25,7 @@ The Callback example uses its own HTTP delivery setup instead.
 | [keyboards.py](keyboards.py) | Ordinary and inline keyboards, payloads and message editing | `message_new`, `message_event` |
 | [interactive_map.py](interactive_map.py) | Photo upload and replacement with inline navigation | `message_new`, `message_event` |
 | [callback.py](callback.py) | A Callback API receiver using an ASGI factory | `message_new` |
+| [background_result.py](background_result.py) | Managed computation, TypeHandler and event dispatch stopping | `message_new` |
 
 ## Echo bot
 
@@ -95,3 +96,21 @@ API settings. The confirmation value must match the code provided by VK.
 The receiver echoes text messages. `CallbackSettings` extends `BotSettings` with the
 required secret and confirmation fields, and the ASGI lifespan manages the application's
 resources. See [Callback API](../README.md#callback-api) for delivery semantics.
+
+## Background calculation
+
+```bash
+uv run python examples/background_result.py
+```
+
+Send `/background hello`. The command acknowledges the request, starts an owned finite
+coroutine and raises ApplicationHandlerStop to skip later groups. The local coroutine
+counts characters after a short asynchronous delay, then puts a BackgroundResult in the
+same queue as incoming VK events. Its TypeHandler sends the result and updates peer_data.
+The calculation uses no AI, speech models, database or broker. Running the full example
+uses live VK for polling and messages; configure can also register the handlers on an
+Application with a mocked Bot for offline verification.
+
+The background coroutine never changes shared state directly. Queue admission does not
+persist the job; restarts can lose it. Finite tasks are awaited on shutdown with the
+consumer still active. See [queue and lifecycle contracts](../docs/development/event-processing.md).

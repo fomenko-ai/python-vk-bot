@@ -5,7 +5,7 @@
 and other Python implementations have not been verified. The default contributor
 interpreter remains Python 3.14.
 
-The library installs, imports and passes all 272 regression tests on the checked
+The library installs, imports and passes all 327 regression tests on the checked
 3.9–3.14 interpreters. Before the media API transfer, both base wheel installation and sdist installation with the
 Callback extra were also checked in clean Python 3.9 consumer environments.
 See [exact results and reproduction commands](verification.md).
@@ -55,8 +55,8 @@ dependencies, Python targets and lifecycle safeguards are retained.
   `2740cfd3d6e9ca49d1aa8db42b0dfb1071f1d455`. They use `typing.Union` and
   `typing_extensions.TypeAlias`. Button enums use native `StrEnum` on Python 3.11+
   and `str`/`Enum` with value-based `str()` on Python 3.9/3.10; serialized VK values
-  and Pydantic validation are equivalent across the checked runtimes. Package version
-  is 0.3.0, with the changelog dated 2026-11-02. Python-specific dependencies and
+  and Pydantic validation are equivalent across the checked runtimes. That keyboard transfer used
+  version 0.3.0 and changelog date 2026-11-02. Python-specific dependencies and
   interpreter targets remain configured for this branch.
 - Annotations use Optional/Union, explicit forward references and postponed evaluation.
   Self and TypeAlias come from typing_extensions. Pydantic remains at v2 boundaries.
@@ -119,3 +119,24 @@ VK API version, methods, payloads and delivery policies are not changed by this 
 - [pip Git sources](https://pip.pypa.io/en/stable/topics/vcs-support/) and
   [uv dependency sources](https://docs.astral.sh/uv/concepts/projects/dependencies/)
   document branch, tag and revision installation.
+
+## Unified event transfer (2026-11-03)
+
+The event queue, TypeHandler, managed tasks and post_stop are transferred from main
+commit `9874493ab5d3d62e6327bcbd93f5dd6eb433796b`. Queue shutdown uses a private
+closed flag and availability event: accepted items drain before the consumer exits.
+No asyncio.Queue.shutdown or QueueShutDown dependency is required. Loop-bound
+queue primitives and the lifecycle lock are created on first async use; inspecting
+queue capacity before initialization does not bind primitives to a loop.
+
+Generic syntax uses TypeVar/Generic and typing_extensions; dataclasses remain
+unslotted. Waiting for child completion with asyncio.wait separates child cancellation
+from owner cancellation without Task.cancelling. Long Poll generators close in
+finally and owned polling cleanup is awaited. No new dependencies are introduced. At the user’s explicit request, version 0.4.0
+and changelog date 2026-11-03 match main.
+
+All 327 tests and syntax checks pass on Python 3.9–3.14, including adapted queue/task
+regressions. Polling stop and runner cancellation share one cancellation request per
+run so suspended cleanup is not interrupted a second time. Both operation orders and
+repeated runner cancellation have regression coverage. See the dated verification log
+for current results and the historical record for the preceding release.

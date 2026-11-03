@@ -1,5 +1,51 @@
 # Verification
 
+## Unified event transfer and review fixes (2026-11-03)
+
+Transferred production code, shared documentation, examples and all four test-file
+changes from main commit `9874493ab5d3d62e6327bcbd93f5dd6eb433796b`. Queue close,
+lazy loop primitives, generics and owned polling cleanup are portable to Python 3.9.
+Existing compatibility-only tests and timeout/task helpers are retained. Version
+0.4.0 and changelog date 2026-11-03 match main by explicit user request; branch-specific
+dependencies and Python targets are unchanged. uv lock changed only the package version.
+
+The reviewed Long Poll cleanup defect is fixed locally: stop and runner cleanup share
+one cancellation request per polling run. Regression tests cover both stop/cancel orders
+and repeated runner cancellation while HTTP cleanup is suspended. Additional coverage
+checks queue inspection before the loop and close with empty/full queues. The same defect
+in main is outside this target-branch transfer; no changes were transferred back to main.
+
+Production changes and then regression edits were approved before the test stage.
+The focused application/Callback/background suites passed 94 cases on Python 3.14.4.
+All **327 tests** passed on each interpreter below, after the Python 3.14 contributor run:
+
+| CPython | Syntax (20 package sources) | Locked installation and full regression |
+| --- | --- | --- |
+| 3.9.25 | Passed | 327 passed |
+| 3.10.20 | Passed | 327 passed |
+| 3.11.15 | Passed | 327 passed |
+| 3.12.13 | Passed | 327 passed |
+| 3.13.14 | Passed | 327 passed |
+| 3.14.4 | Passed | 327 passed |
+
+| Check | Result |
+| --- | --- |
+| `uv sync --locked --all-extras` | Passed |
+| `uv run --no-sync ruff check .` | Passed |
+| `uv run --no-sync ruff format --check .` | Passed; 70 files |
+| `uv run --no-sync ty check` | Passed |
+| `uv run --no-sync pytest --strict-markers` | Passed; 327 tests on Python 3.14.4 |
+| Syntax and isolated runtime compatibility scripts | Passed on all six interpreters above |
+| `git diff --check` and staged diff check | Passed |
+| Live VK integration | Not run; opt-in credentials required |
+| Wheel/sdist build and consumer installation for 0.4.0 | Not run; previous build results below apply to 0.3.0 |
+
+No new dependency metadata changes were needed during review fixes, so uv lock was not
+rerun at that stage; locked sync confirms consistency. Tests use HTTP mocks and no live
+services. Platform and dependency-combination limits below continue to apply.
+
+The following sections record verification before this transfer.
+
 Checked on 2026-11-02 on Linux x86_64, branch `compat/py39`. All **272 regression tests**
 pass on each interpreter below. Tests were adapted after explicit user approval of the
 production changes. Dependency installation uses uv.lock with the Callback extra and

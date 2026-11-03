@@ -16,6 +16,7 @@ from python_vk_bot import (
     Application,
     Bot,
     BotSettings,
+    CallbackButton,
     CommandHandler,
     Context,
     Keyboard,
@@ -66,14 +67,7 @@ def map_keyboard(session: str) -> Keyboard:
         inline=True,
         buttons=[
             [
-                {
-                    "action": {
-                        "type": "callback",
-                        "label": label,
-                        "payload": json.dumps({"map": session, "move": move}),
-                    },
-                    "color": "secondary",
-                }
+                CallbackButton(label=label, payload={"map": session, "move": move})
                 for label, move in row
             ]
             for row in [

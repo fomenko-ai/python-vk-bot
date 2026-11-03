@@ -3,6 +3,8 @@
 Status: implemented compatibility branch with regression verification on Python 3.9–3.14.
 Live media operations remain unverified.
 
+Unified event additions and portable cleanup have regression coverage on Python 3.9–3.14.
+
 ## Design goals
 
 The library separates asynchronous HTTP, VK methods, validated events, delivery,
@@ -28,7 +30,8 @@ python_vk_bot/
     keyboards.py    typed outgoing buttons, enums and VK JSON serialization
     events.py       event envelope, typed views and raw object access
   long_poll.py      session acquisition, cursor and recovery
-  application.py    lifecycle, ordered serial dispatch and duplicate cache
+  application.py    lifecycle, managed tasks, queued serial dispatch and duplicate cache
+  queues.py         bounded producer interface and private completion records
   context.py        user, peer and application data
   handlers.py       generic/message/message-event/command handlers
   filters.py        predicates and boolean composition
@@ -43,7 +46,9 @@ has no dependency on polling. Models have no HTTP/application dependencies.
 flowchart LR
     LP[Long Poll] --> U[Validated Update]
     CB[Callback: authenticate] --> U
-    U --> A[Application: deduplicate and dispatch]
+    U --> Q[Application queue]
+    R[Internal Python objects] --> Q
+    Q --> A[Application: serial dispatch and VK deduplication]
     A --> H[Handler and Context]
     H --> B[Bot]
     B --> T[HTTPTransport]
@@ -61,13 +66,15 @@ An HTTPX logging filter removes URL query strings from HTTPX's standard request 
 records, including unrelated HTTPX query strings in the same process. This prevents
 Long Poll keys appearing in INFO logs. Custom transports/hooks must follow the same policy.
 
-Application.initialize initializes Bot and invokes post_init. start enables intake;
-stop disables intake, cancels its owned polling task and waits for active dispatch.
-shutdown closes Bot's owned resources and invokes post_shutdown. An async context manager
+Application.initialize initializes Bot and invokes post_init. start starts the consumer
+and enables intake. stop rejects new intake/tasks, interrupts idle polling, and drains
+active dispatch, managed tasks and accepted events. shutdown invokes post_stop once while
+Bot is available, closes Bot's resources and invokes post_shutdown. An async context manager
 combines these operations. run_polling is awaitable and owns this lifecycle but never
 creates/closes the caller's event loop. Nested contexts are rejected. A handler may call
-stop; it must leave shutdown to the owner. Hooks should not recursively invoke lifecycle
-methods. Externally owned tasks must not outlive their resource owner.
+stop without waiting for itself; it must leave shutdown to the owner. Direct stop does
+not invoke post_stop. Hooks must not recursively invoke lifecycle methods. Externally
+owned tasks must not outlive their resource owner.
 
 Cancellation propagates. Callback shutdown drains active dispatch; user handlers must
 cooperate with cancellation and must not block the event loop. No detached handler tasks
@@ -76,22 +83,33 @@ by the caller or the Application instance is discarded.
 
 ## Dispatch and state
 
-All process_update calls serialize through one lock, including concurrent Callback
-requests. Numeric handler groups run in ascending order; only the first matching handler
+All process_update calls enqueue events and await completion receipts, including concurrent
+Callback requests. update_queue also accepts internal Python objects. One consumer processes
+events in insertion order. Numeric groups run in ascending order; only the first matching handler
 in each group runs. Generic Handler supports unmodeled events. Filters are synchronous,
 short predicates. Regex uses search; commands match an explicit /command token, without
 Telegram-specific mentions. A message with geo is still a message; use filters.LOCATION.
 
-Context is a regular dataclass with user_data keyed by from_id/user_id, peer_data keyed
-by peer_id, and shared bot_data. Missing identities receive temporary empty dictionaries.
-State is process-local, not persistent, and does not have an eviction policy. Handlers may implement simple
-conversation levels in these dictionaries. No ConversationHandler or storage backend is
-claimed. Serial dispatch protects these maps only inside awaited handlers, not arbitrary
-tasks created by application users.
+TypeHandler routes by Python type. Existing handlers and filters receive only VK Updates.
+ApplicationHandlerStop ends the current dispatch successfully, including VK deduplication.
 
-Errors invoke registered error callbacks with Context.error, then propagate. Library logs
+Context is a regular dataclass. Context.event holds the original object; user_data is
+keyed by from_id/user_id, peer_data by peer_id, and bot_data is shared. Missing identities
+receive temporary empty dictionaries. State is process-local,
+not persistent, and does not have an eviction policy. Handlers may implement simple
+conversation levels in these dictionaries. No ConversationHandler or storage backend is
+claimed. Serial dispatch protects these maps only inside awaited handlers/error callbacks,
+not background computations. Internal events can explicitly select scopes via user_id/peer_id
+queue arguments; otherwise their dictionaries are temporary and empty.
+
+Errors invoke registered error callbacks with Context.error. Awaited process_update calls
+receive the error; queued items without receipts do not stop the consumer. Library logs
 include exception class names only. Error callbacks must avoid logging raw exceptions,
-updates or context if their data may be private. Recursive dispatch is rejected.
+updates or context if their data may be private. Internal errors supply None as the callback's
+first argument and the object in Context.event. Recursive dispatch is rejected.
+
+See [event processing](../development/event-processing.md) for queue overload, managed-task
+ownership, cancellation, complete lifecycle ordering and public API stability.
 
 ## Delivery, backpressure and retries
 
@@ -155,9 +173,8 @@ References: [HTTPX async](https://www.python-httpx.org/async/),
 
 ## Verification and limits
 
-The 243-test regression suite passes on Python 3.9–3.14. Syntax, dependency installation,
-imports, type checking and package builds have also been checked. See
-[verification results](../development/verification.md) and
+All 327 regression tests pass on Python 3.9–3.14 after the unified-event transfer,
+including queue/task contracts and shared polling cancellation cleanup. See [verification results](../development/verification.md) and
 [Python compatibility](../development/python-compatibility.md).
 No durable queue or distributed state is claimed.
 

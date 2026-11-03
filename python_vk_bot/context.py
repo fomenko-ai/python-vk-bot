@@ -19,3 +19,4 @@ class Context:
     peer_data: dict[str, object]
     bot_data: dict[str, object]
     error: Optional[Exception] = field(default=None, repr=False)
+    event: Optional[object] = field(default=None, repr=False)

@@ -3,14 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from typing import Generic, Protocol, TypeVar
 
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, TypeGuard
 
 from . import filters
 from .context import Context
 from .models import Update
 
+T = TypeVar("T")
+
 HandlerCallback: TypeAlias = Callable[[Update, Context], Awaitable[None]]
+
+
+class _DispatchHandler(Protocol):
+    async def _dispatch(self, update: object, context: Context) -> bool: ...
 
 
 class Handler:
@@ -25,6 +32,39 @@ class Handler:
 
     async def handle_update(self, update: Update, context: Context) -> None:
         await self.callback(update, context)
+
+    async def _dispatch(self, update: object, context: Context) -> bool:
+        if not isinstance(update, Update) or not self.check_update(update):
+            return False
+        await self.handle_update(update, context)
+        return True
+
+
+class TypeHandler(Generic[T]):
+    """Route a Python object by type, including validated VK Updates."""
+
+    def __init__(
+        self,
+        update_type: type[T],
+        callback: Callable[[T, Context], Awaitable[None]],
+        *,
+        strict: bool = False,
+    ) -> None:
+        self.type = update_type
+        self.callback = callback
+        self.strict = strict
+
+    def check_update(self, update: object) -> TypeGuard[T]:
+        return type(update) is self.type if self.strict else isinstance(update, self.type)
+
+    async def handle_update(self, update: T, context: Context) -> None:
+        await self.callback(update, context)
+
+    async def _dispatch(self, update: object, context: Context) -> bool:
+        if not self.check_update(update):
+            return False
+        await self.handle_update(update, context)
+        return True
 
 
 class MessageHandler(Handler):

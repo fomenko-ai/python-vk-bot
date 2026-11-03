@@ -1,6 +1,10 @@
 """Safe exceptions: messages never include credentials or server payloads."""
 
 
+class ApplicationHandlerStop(Exception):
+    """Finish the current event successfully without invoking further handlers."""
+
+
 class VKError(Exception):
     """Base class for library errors."""
 

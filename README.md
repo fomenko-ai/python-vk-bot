@@ -40,6 +40,7 @@ See the [examples guide](examples/README.md) for setup, required events and run 
 | [Keyboards](examples/keyboards.py) | Ordinary text buttons and inline callback buttons with message editing |
 | [Interactive map](examples/interactive_map.py) | Generate, upload and replace a PNG using navigation buttons |
 | [Callback receiver](examples/callback.py) | Receive events through an ASGI application |
+| [Background result](examples/background_result.py) | Return a local calculation through the unified event queue |
 
 ## Long Poll bot
 
@@ -252,6 +253,18 @@ uv run python examples/interactive_map.py
 The media API has network-free regression tests. Actual replacement of a photo in an
 existing VK message has not yet been verified with a live token; an explicitly enabled
 [integration test](docs/development/media-api.md#live-integration-test) is provided.
+
+## Background tasks and internal events
+
+Use `Application.create_task()` for background operations and `update_queue.put()` to
+return Python objects to the shared serial dispatcher. `TypeHandler` routes these results;
+`ApplicationHandlerStop` skips later handler groups for the current event. See the
+[background-result example](examples/background_result.py).
+
+The application manages task completion and calls `post_stop` before closing Bot.
+Queue capacity, state scopes, cancellation, workers and shutdown are described in the
+[event processing guide](docs/development/event-processing.md). The queue is in memory
+and does not preserve work across restarts.
 
 ## Agent Skills
 

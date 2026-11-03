@@ -36,7 +36,7 @@ To install from a local checkout, run `uv build` in this repository, then in a s
 project use the actual absolute path of the resulting wheel:
 
 ```bash
-uv add /absolute/path/to/python_vk_bot-0.3.0-py3-none-any.whl
+uv add /absolute/path/to/python_vk_bot-0.4.0-py3-none-any.whl
 uvx library-skills
 ```
 
