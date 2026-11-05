@@ -1,11 +1,11 @@
 """Typed handler registration without a conversation-state framework."""
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from typing import Protocol, TypeGuard
 
 from . import filters
 from .context import Context
-from .models import Update
+from .models import DonutSubscriptionEventType, Update
 
 type HandlerCallback = Callable[[Update, Context], Awaitable[None]]
 
@@ -78,6 +78,39 @@ class MessageEventHandler(Handler):
         super().__init__(
             callback,
             predicate=filters.Filter(lambda update: update.message_event is not None) & predicate,
+        )
+
+
+class DonutSubscriptionHandler(Handler):
+    """Handle subscription changes through the ordinary awaited callback pipeline.
+
+    event_types accepts enum members or their exact VK strings. None selects all
+    five events; an empty iterable selects none. Unknown names raise ValueError.
+    predicate further restricts the selection. This handler does not synchronize
+    subscriptions or decide whether a user has paid access.
+    """
+
+    def __init__(
+        self,
+        callback: HandlerCallback,
+        *,
+        event_types: Iterable[DonutSubscriptionEventType | str] | None = None,
+        predicate: filters.Filter = filters.ALL,
+    ) -> None:
+        if isinstance(event_types, str):
+            raise TypeError("event_types must be an iterable of event names, not a single string")
+        selected = (
+            frozenset(DonutSubscriptionEventType)
+            if event_types is None
+            else frozenset(DonutSubscriptionEventType(value) for value in event_types)
+        )
+        super().__init__(
+            callback,
+            predicate=(
+                filters.DONUT_SUBSCRIPTION
+                & filters.Filter(lambda update: update.type in selected)
+                & predicate
+            ),
         )
 
 

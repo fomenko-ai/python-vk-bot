@@ -25,6 +25,7 @@ The Callback example uses its own HTTP delivery setup instead.
 | [keyboards.py](keyboards.py) | Ordinary and inline keyboards, payloads and message editing | `message_new`, `message_event` |
 | [interactive_map.py](interactive_map.py) | Photo upload and replacement with inline navigation | `message_new`, `message_event` |
 | [callback.py](callback.py) | A Callback API receiver using an ASGI factory | `message_new` |
+| [donut_subscriptions.py](donut_subscriptions.py) | Typed Donut notifications and a private `/donut` command | Five `donut_subscription_*` events and `message_new` |
 | [background_result.py](background_result.py) | Managed computation, TypeHandler and event dispatch stopping | `message_new` |
 
 ## Echo bot
@@ -96,6 +97,23 @@ API settings. The confirmation value must match the code provided by VK.
 The receiver echoes text messages. `CallbackSettings` extends `BotSettings` with the
 required secret and confirmation fields, and the ASGI lifespan manages the application's
 resources. See [Callback API](../README.md#callback-api) for delivery semantics.
+
+## Donut subscription events
+
+Use the same environment configuration as the Callback receiver above. Enable VK Donut
+in the community and select `donut_subscription_create`, `donut_subscription_prolonged`,
+`donut_subscription_cancelled`, `donut_subscription_expired`,
+`donut_subscription_price_changed` and `message_new` in Callback API settings.
+
+```bash
+uv run --extra callback uvicorn examples.donut_subscriptions:create_app --factory
+```
+
+Configure the HTTPS `/callback` URL, matching secret and confirmation code. Send `/donut`
+privately to the community to see the latest received event for your user. Event handling
+does not send unsolicited messages. The remembered event is process-local and is not
+evidence of current paid access; no history is recovered after a restart. See the
+[Donut guide](../docs/development/donut.md) for complete setup and the public API.
 
 ## Background calculation
 

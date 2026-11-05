@@ -1,5 +1,33 @@
 # Verification
 
+## Donut events and version 0.5.0 (2026-11-05)
+
+Added **38 network-free Donut regression cases** after main-code approval, covering
+all five events, raw/extra field retention, cached typed views, user identity, monetary
+validation, filters, handler selection, ordered groups, user context, Callback
+authentication, failed-handler retry, duplicate suppression and HTTP validation.
+The narrow Donut suite passed, followed by the full suite: **360 tests** on Python 3.14.4.
+No production-code fixes were needed during this test stage.
+
+The requested new version is **0.5.0**, with changelog date **2026-11-05**. Package
+metadata and uv.lock agree; no dependency versions changed.
+
+| Check | Result |
+| --- | --- |
+| `uv lock` | Passed |
+| `uv sync` | Passed |
+| `uv sync --locked --extra callback` | Passed |
+| `uv run ruff check .` | Passed |
+| `uv run ruff format --check .` | Passed, 73 files |
+| `uv run ty check` | Passed |
+| `uv run pytest --strict-markers` | Passed, 360 tests |
+| `git diff --check` | Passed |
+| Live VK delivery / other Python versions | Not run; outside the first-stage verification scope |
+
+The Donut tests use existing socket/DNS isolation and mocked HTTP/ASGI delivery.
+No live credentials, subscription synchronization, access service or persistent storage
+are involved. Changes remain local; no commit, tag or publication was performed.
+
 ## Unified queue regression verification (2026-11-03)
 
 After the user approved the test stage, **51 new cases** were added on CPython 3.14.4:

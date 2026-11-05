@@ -5,6 +5,7 @@ from .attachments import (
     PhotoAttachment,
     VideoAttachment,
 )
+from .donut import DonutSubscriptionEvent, DonutSubscriptionEventType
 from .events import Update
 from .keyboards import ButtonColor, ButtonType, CallbackButton, TextButton
 from .messages import Coordinates, Geo, Keyboard, Message, MessageEvent, User
@@ -17,6 +18,8 @@ __all__ = [
     "CallbackButton",
     "Coordinates",
     "DocumentAttachment",
+    "DonutSubscriptionEvent",
+    "DonutSubscriptionEventType",
     "Geo",
     "Keyboard",
     "Message",
