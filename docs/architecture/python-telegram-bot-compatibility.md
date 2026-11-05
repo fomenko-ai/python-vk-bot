@@ -1,5 +1,31 @@
 # python-telegram-bot design reference
 
+## Donut event handlers
+
+Rechecked on **2026-11-04** against stable **PTB 22.8**, as identified by the
+[stable documentation](https://docs.python-telegram-bot.org/en/stable/):
+
+- [BaseHandler](https://docs.python-telegram-bot.org/en/stable/telegram.ext.basehandler.html)
+- [Application source, handler groups](https://github.com/python-telegram-bot/python-telegram-bot/blob/v22.8/src/telegram/ext/_application.py)
+- [TypeHandler](https://docs.python-telegram-bot.org/en/v22.8/telegram.ext.typehandler.html)
+- [CallbackContext](https://docs.python-telegram-bot.org/en/v22.8/telegram.ext.callbackcontext.html)
+- [Update](https://docs.python-telegram-bot.org/en/v22.8/telegram.update.html)
+- [Filters source](https://github.com/python-telegram-bot/python-telegram-bot/blob/v22.8/src/telegram/ext/filters.py)
+
+DonutSubscriptionHandler follows the specialized-handler pattern: select a validated
+update and await the user's callback through the existing Handler. Group ordering and
+first-match behavior remain owned by Application. TypeHandler routes Python types,
+whereas DonutSubscriptionHandler selects VK event names within Update. The optional
+event_types argument and existing predicate compose selection without another dispatcher.
+
+The typed Update view and user_id-based Context follow the role of PTB's typed Update
+fields and user context. VK Donut has no direct Telegram counterpart. Donut events have
+no conversation identifier, so peer_id stays None. Filters use this library's synchronous
+callable predicates and boolean composition; they do not implement PTB's data filters.
+No Telegram payments, membership states or entitlement policy are mapped onto VK events.
+These additions follow decisions 0001/0004 without changing transport or lifecycle contracts.
+See the [current Donut API and stability contract](../development/donut.md).
+
 ## Unified queue and lifecycle reference
 
 Rechecked on **2026-11-03** against stable **PTB 22.8**, confirmed by

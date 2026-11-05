@@ -10,7 +10,10 @@ from typing_extensions import Self
 from python_vk_bot.errors import InvalidUpdateError
 
 from .base import VKModel
+from .donut import DonutSubscriptionEvent, DonutSubscriptionEventType
 from .messages import Message, MessageEvent, MessageObject
+
+_DONUT_EVENT_TYPES = frozenset(event.value for event in DonutSubscriptionEventType)
 
 
 class Update(VKModel):
@@ -21,6 +24,7 @@ class Update(VKModel):
     object: JsonValue
     _message: Optional[Message] = PrivateAttr(default=None)
     _message_event: Optional[MessageEvent] = PrivateAttr(default=None)
+    _donut_subscription: Optional[DonutSubscriptionEvent] = PrivateAttr(default=None)
 
     @field_validator("event_id", mode="before")
     @classmethod
@@ -34,6 +38,8 @@ class Update(VKModel):
             self._message = MessageObject.model_validate(self.object).message
         elif self.type == "message_event":
             self._message_event = MessageEvent.model_validate(self.object)
+        elif self.type in _DONUT_EVENT_TYPES:
+            self._donut_subscription = DonutSubscriptionEvent.model_validate(self.object)
         return self
 
     @classmethod
@@ -54,11 +60,18 @@ class Update(VKModel):
         return self._message_event
 
     @property
+    def donut_subscription(self) -> Optional[DonutSubscriptionEvent]:
+        """Return the parsed subscription event, not a synchronized access status."""
+        return self._donut_subscription
+
+    @property
     def user_id(self) -> Optional[int]:
         if self.message is not None:
             return self.message.from_id
         if self.message_event is not None:
             return self.message_event.user_id
+        if self.donut_subscription is not None:
+            return self.donut_subscription.user_id
         return None
 
     @property

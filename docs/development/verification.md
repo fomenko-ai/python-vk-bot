@@ -1,5 +1,60 @@
 # Verification
 
+## Donut event transfer (2026-11-05)
+
+Selectively transferred main commit `31acf2b1d21543c6c72bb9b1f9e453bf96b3b49e`
+onto compat/py39 base `699f295a78a22a9f8b5a789dab18287d261558dc`.
+Models, Update parsing, handler, filters, exports, example, shared documentation
+and all 38 Donut tests are included. Five extra cases check value-based enum str()
+on every interpreter. Existing compatibility-only coverage is retained.
+
+Adaptations: Optional/Union annotations, native StrEnum on 3.11+ with str/Enum
+fallback on 3.9/3.10, string-set event matching, and if/elif in the example.
+No transport, dispatcher or lifecycle contracts change. Branch-specific dependencies,
+Python targets and installation instructions are preserved. By subsequent explicit
+user request, package version 0.5.0 and changelog date 2026-11-05 match main; uv.lock
+is synchronized without dependency changes. The empty source Unreleased bullet is
+omitted. Source-only verification history is replaced by these target-specific results.
+
+The focused Donut suite passed **43 cases** on Python 3.14.4 before the full contributor
+checks and older-runtime assessment. Both compatibility scripts then passed:
+
+| CPython | Syntax (21 package sources) | Locked installation and full regression |
+| --- | --- | --- |
+| 3.9.25 | Passed | 370 passed |
+| 3.10.20 | Passed | 370 passed |
+| 3.11.15 | Passed | 370 passed |
+| 3.12.13 | Passed | 370 passed |
+| 3.13.14 | Passed | 370 passed |
+| 3.14.4 | Passed | 370 passed |
+
+| Check | Result |
+| --- | --- |
+| `uv sync` / `uv sync --locked --all-extras` | Passed on Python 3.14.4 |
+| `uv run --no-sync ruff check .` | Passed |
+| `uv run --no-sync ruff format --check --no-cache .` | Passed; 74 files |
+| `uv run --no-sync ty check` | Passed; target Python 3.9 |
+| `uv run --no-sync pytest --strict-markers` | Passed; 370 tests on Python 3.14.4 |
+| Syntax and isolated runtime compatibility scripts | Passed on all six interpreters |
+| Donut example factory on Python 3.9 | Passed with synthetic settings; no server started |
+| `git diff --check` | Passed |
+| Live VK delivery / packaging builds | Not run; outside this transfer scope |
+
+Both matrix scripts initially failed because the sandbox blocked uv cache writes;
+approved reruns passed. The first syntax-script message about unavailable interpreters
+was a cache-access failure, not evidence of missing Python installations. Tests use
+network mocks and socket/DNS isolation. No live credentials or services were used.
+
+Changes are deliberately uncommitted at the user's request. Source-to-target mapping
+is `31acf2b` to the working-tree diff on `699f295`; there is no target commit yet.
+No commit, push, tag or publication was performed.
+
+After synchronizing release metadata to 0.5.0 / 2026-11-05, uv lock, uv sync,
+locked all-extras sync, Ruff lint/format, ty and all 370 tests passed again on
+Python 3.14.4. Only the local package version changed in the lockfile. The interpreter
+matrix above preceded this metadata-only update and was not repeated; runtime code,
+tests and dependency versions remained identical.
+
 ## Unified event transfer and review fixes (2026-11-03)
 
 Transferred production code, shared documentation, examples and all four test-file

@@ -5,7 +5,7 @@
 and other Python implementations have not been verified. The default contributor
 interpreter remains Python 3.14.
 
-The library installs, imports and passes all 327 regression tests on the checked
+The library installs, imports and passes all 370 regression tests on the checked
 3.9–3.14 interpreters. Before the media API transfer, both base wheel installation and sdist installation with the
 Callback extra were also checked in clean Python 3.9 consumer environments.
 See [exact results and reproduction commands](verification.md).
@@ -51,6 +51,13 @@ dependencies, Python targets and lifecycle safeguards are retained.
 
 ## Runtime choices
 
+- Donut subscription events are transferred from main commit
+  `31acf2b1d21543c6c72bb9b1f9e453bf96b3b49e`. The typed view, handler, filters and
+  Callback example retain the same contracts. Optional/Union annotations and a
+  native StrEnum / str-Enum fallback support Python 3.9–3.14. A frozen set of event
+  strings avoids newer Enum containment semantics; the example uses if/elif.
+  At the user’s explicit request, version 0.5.0 and changelog date 2026-11-05
+  match main; branch-specific dependencies and Python targets are preserved. All 370 tests pass on each checked interpreter.
 - Typed keyboard buttons are transferred from main commit
   `2740cfd3d6e9ca49d1aa8db42b0dfb1071f1d455`. They use `typing.Union` and
   `typing_extensions.TypeAlias`. Button enums use native `StrEnum` on Python 3.11+

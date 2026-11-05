@@ -4,6 +4,17 @@ All notable changes will be documented here, following Keep a Changelog.
 
 ## Unreleased
 
+-
+
+## 0.5.0 - 2026-11-05
+
+### Added
+
+- Typed support for all five VK Donut subscription Callback events through
+  `Update.donut_subscription`, subscriber user context, `DonutSubscriptionHandler`
+  and composable filters on Python 3.9–3.14. See the [Donut guide](docs/development/donut.md)
+  and Callback example. These events report changes without synchronizing paid access.
+
 ### Fixed
 
 - Concurrent graceful stop and polling-runner cancellation wait for Long Poll cleanup

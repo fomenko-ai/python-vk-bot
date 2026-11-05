@@ -29,11 +29,12 @@ python_vk_bot/
     messages.py     messages, geo, users and keyboard structures
     keyboards.py    typed outgoing buttons, enums and VK JSON serialization
     events.py       event envelope, typed views and raw object access
+    donut.py        subscription event names and shared typed object view
   long_poll.py      session acquisition, cursor and recovery
   application.py    lifecycle, managed tasks, queued serial dispatch and duplicate cache
   queues.py         bounded producer interface and private completion records
   context.py        user, peer and application data
-  handlers.py       generic/message/message-event/command handlers
+  handlers.py       generic/type/message/message-event/command/Donut handlers
   filters.py        predicates and boolean composition
   callback.py       Callback authentication and optional ASGI adapter
 ```
@@ -92,6 +93,12 @@ Telegram-specific mentions. A message with geo is still a message; use filters.L
 
 TypeHandler routes by Python type. Existing handlers and filters receive only VK Updates.
 ApplicationHandlerStop ends the current dispatch successfully, including VK deduplication.
+
+DonutSubscriptionHandler selects the five supported subscription event types and reuses
+Handler execution. Update parses the shared Donut object once, preserving raw JSON and
+unknown fields. Its user_id selects user_data; no peer ID is inferred. Subscription event
+facts do not represent synchronized subscription state or an access decision. No Donut
+service or storage layer is implemented. See the [Donut contract](../development/donut.md).
 
 Context is a regular dataclass. Context.event holds the original object; user_data is
 keyed by from_id/user_id, peer_data by peer_id, and bot_data is shared. Missing identities
@@ -154,8 +161,9 @@ users do not need to supply them. See [settings usage](../../README.md#settings)
 
 Pydantic v2 validates configuration, API envelopes, used response structures and event
 boundaries. Unknown VK fields survive. Update.object retains the original JSON object,
-with parsed message/message_event views for handlers. There is intentionally no generated
-model collection or repeated validation in each handler. Keyboard accepts typed TextButton
+with parsed message/message_event/donut_subscription views for handlers. There is
+intentionally no generated model collection or repeated validation in each handler.
+Keyboard accepts typed TextButton
 and CallbackButton models alongside raw VK action dictionaries. Typed buttons validate
 their fields and serialize flat inputs into VK action envelopes in JSON mode. ButtonColor
 and ButtonType expose the supported values as string-valued enum members. Raw action dictionaries

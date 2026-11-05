@@ -1,6 +1,6 @@
 # VK API support
 
-Verification date: **2026-11-02** (typed keyboards). Implementation target: **5.199**, represented as a string.
+Verification date: **2026-11-04** (Donut events). Implementation target: **5.199**, represented as a string.
 The official [version history](https://dev.vk.com/ru/reference/versions) lists 5.199 as
 the newest documented version. Its entry describes internal changes without a method,
 parameter, or response change. The official [VKCOM schema](https://github.com/VKCOM/vk-api-schema)
@@ -28,6 +28,7 @@ before changing version-dependent behavior.
 | Bots Long Poll a_check | Async LongPoll; failed=1/2/3 recovery and bounded retry delay |
 | message_new | Typed Message including optional geo; preserved raw object |
 | message_event | Typed MessageEvent; separate envelope and object event IDs |
+| Five donut_subscription_* Callback events | Typed DonutSubscriptionEvent, user context, handler and filters; no synchronized access state |
 | Callback HTTP | Callback authentication/confirmation and optional ASGI receiver |
 | Other events | Raw Update.object retained; generic Handler can process them |
 
@@ -48,6 +49,49 @@ before changing version-dependent behavior.
   the polling server. Request read timeout exceeds the requested wait.
 - Event envelope: type, group_id, event_id, v, object. Callback secret is checked before
   validation and is excluded from the dispatched Update. Unknown fields are retained.
+
+## Donut contracts
+
+Rechecked on **2026-11-04** when implementation resumed: the official
+[version history](https://dev.vk.com/ru/reference/versions) still lists **5.199** first.
+The event fields were verified against the official
+[community event documentation](https://dev.vk.com/ru/api/community-events/json-schema#donut_subscription_create)
+through direct HTTPS retrieval. The web browsing tool could not open dev.vk.com;
+direct retrieval succeeded. No authenticated requests were made.
+
+| Event | Object fields documented by VK |
+| --- | --- |
+| donut_subscription_create | user_id integer, amount integer, amount_without_fee float |
+| donut_subscription_prolonged | user_id integer, amount integer, amount_without_fee float |
+| donut_subscription_cancelled | user_id integer |
+| donut_subscription_expired | user_id integer |
+| donut_subscription_price_changed | user_id integer, amount_old/amount_new integer, amount_diff/amount_diff_without_fee float |
+
+Amounts are rubles. The official
+[callback schema](https://github.com/VKCOM/vk-api-schema/blob/master/callback/objects.json)
+contains no Donut definitions at verification time. The prose lists field types but
+does not supply explicit per-event required flags. Therefore the shared model requires
+a positive integer user_id as a library validation rule, while monetary fields are
+optional and preserve absence as None. This is not a claim that VK omits those fields.
+Unknown fields survive. No level_id, payment dates or access deadlines are modeled.
+
+The official [Donut methods](https://github.com/VKCOM/vk-api-schema/blob/master/donut/methods.json),
+[objects](https://github.com/VKCOM/vk-api-schema/blob/master/donut/objects.json) and
+[responses](https://github.com/VKCOM/vk-api-schema/blob/master/donut/responses.json)
+identify version 5.199 and establish these limits:
+
+- isDon and getSubscription accept owner_id and require a user token. They do not
+  declare a user_id argument for arbitrary subscriber checks with community tokens.
+- getSubscriptions requires a user token and accepts fields/offset/count, not user_id.
+- getSubscription returns owner_id, amount, next_payment_date and status; documented
+  status values are active/expiring, not expired. level_id is not in this contract.
+- next_payment_date is not established as a guaranteed paid-access termination date.
+
+The library adds no Donut method wrappers, automatic reconciliation or authorization
+policy. API errors remain errors, including code 15; they must not be converted into
+negative subscription results. Callback parsing is supported without claiming Donut
+delivery through Bots Long Poll. Live community delivery remains unverified.
+See the [Donut guide](donut.md) for event/entitlement boundaries and duplicate handling.
 
 ## Messaging contracts
 

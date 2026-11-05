@@ -6,7 +6,14 @@ from .bot import Bot
 from .callback import Callback
 from .context import Context
 from .errors import ApplicationHandlerStop
-from .handlers import CommandHandler, Handler, MessageEventHandler, MessageHandler, TypeHandler
+from .handlers import (
+    CommandHandler,
+    DonutSubscriptionHandler,
+    Handler,
+    MessageEventHandler,
+    MessageHandler,
+    TypeHandler,
+)
 from .long_poll import LongPoll
 from .models import (
     Attachment,
@@ -15,6 +22,8 @@ from .models import (
     ButtonType,
     CallbackButton,
     DocumentAttachment,
+    DonutSubscriptionEvent,
+    DonutSubscriptionEventType,
     Keyboard,
     Message,
     MessageEvent,
@@ -41,6 +50,9 @@ __all__ = [
     "CommandHandler",
     "Context",
     "DocumentAttachment",
+    "DonutSubscriptionEvent",
+    "DonutSubscriptionEventType",
+    "DonutSubscriptionHandler",
     "Handler",
     "Keyboard",
     "LongPoll",

@@ -41,6 +41,7 @@ See the [examples guide](examples/README.md) for setup, required events and run 
 | [Interactive map](examples/interactive_map.py) | Generate, upload and replace a PNG using navigation buttons |
 | [Callback receiver](examples/callback.py) | Receive events through an ASGI application |
 | [Background result](examples/background_result.py) | Return a local calculation through the unified event queue |
+| [Donut subscriptions](examples/donut_subscriptions.py) | Receive five typed subscription events and inspect the latest notification |
 
 ## Long Poll bot
 
@@ -265,6 +266,17 @@ The application manages task completion and calls `post_stop` before closing Bot
 Queue capacity, state scopes, cancellation, workers and shutdown are described in the
 [event processing guide](docs/development/event-processing.md). The queue is in memory
 and does not preserve work across restarts.
+
+## VK Donut events
+
+Register `DonutSubscriptionHandler(on_donut)` through `Application.add_handler` to receive
+all five subscription Callback events. Inside the async callback, `update.donut_subscription`
+provides the typed object and `update.user_id` selects the subscriber's `context.user_data`.
+Use `event_types` or composable `filters.DONUT_SUBSCRIPTION_*` predicates to select events.
+
+These are subscription-change notifications, not a synchronized subscriber list or a paid
+access check. See the [Donut guide](docs/development/donut.md) for setup, models, filtering,
+delivery limitations and the runnable example.
 
 ## Agent Skills
 
