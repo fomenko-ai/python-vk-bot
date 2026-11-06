@@ -1,7 +1,7 @@
 """Run: uv run python examples/keyboards.py (see examples/README.md).
 
 Set VK_TOKEN and VK_GROUP_ID; enable Bots Long Poll, message_new and message_event.
-Send /keyboard for ordinary buttons or /inline for callback buttons.
+Send /keyboard for text/location buttons or /inline for callback/link buttons.
 """
 
 import asyncio
@@ -18,8 +18,11 @@ from python_vk_bot import (
     CommandHandler,
     Context,
     Keyboard,
+    LocationButton,
     MessageEventHandler,
     MessageHandler,
+    OpenLinkButton,
+    ShowSnackbar,
     TextButton,
     Update,
 )
@@ -27,7 +30,7 @@ from python_vk_bot.errors import VKError
 
 
 def regular_keyboard() -> Keyboard:
-    return Keyboard(
+    keyboard = Keyboard(
         inline=False,
         one_time=False,
         buttons=[
@@ -41,6 +44,8 @@ def regular_keyboard() -> Keyboard:
             ]
         ],
     )
+    keyboard.buttons.append([LocationButton()])
+    return keyboard
 
 
 def inline_keyboard() -> Keyboard:
@@ -58,7 +63,8 @@ def inline_keyboard() -> Keyboard:
                     payload={"example": "keyboards", "action": "cancel"},
                     color=ButtonColor.NEGATIVE,
                 ),
-            ]
+            ],
+            [OpenLinkButton(label="Документация", link="https://dev.vk.com/ru/api/bots")],
         ],
     )
 
@@ -125,11 +131,11 @@ async def handle_inline_button(update: Update, context: Context) -> None:
         event.event_id,
         event.user_id,
         event.peer_id,
-        {"type": "show_snackbar", "text": text},
+        ShowSnackbar(text=text),
     )
     if event.conversation_message_id is None:
         return
-    # Keep both buttons so the demo can be tried repeatedly. In a conversation,
+    # Keep the buttons so the demo can be tried repeatedly. In a conversation,
     # any participant can change this demonstration message's selection.
     edited = await context.bot.edit_message(
         event.peer_id,

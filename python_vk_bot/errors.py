@@ -14,8 +14,11 @@ class NetworkError(VKError):
 
 
 class HTTPError(VKError):
-    def __init__(self, status_code: int) -> None:
+    """HTTP failure with an optional server-supplied delay in seconds."""
+
+    def __init__(self, status_code: int, *, retry_after: float | None = None) -> None:
         self.status_code = status_code
+        self.retry_after = retry_after
         super().__init__(f"VK HTTP request failed with status {status_code}")
 
 

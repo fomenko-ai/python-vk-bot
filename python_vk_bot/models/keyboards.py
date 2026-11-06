@@ -30,18 +30,18 @@ class ButtonType(StrEnum):
 
     TEXT = "text"
     CALLBACK = "callback"
+    OPEN_LINK = "open_link"
+    LOCATION = "location"
 
 
-class _LabeledButton(BaseModel):
+class _Button(BaseModel):
     model_config = ConfigDict(
         extra="forbid", validate_assignment=True, hide_input_in_errors=True, allow_inf_nan=False
     )
 
-    label: str = Field(repr=False)
     payload: dict[str, JsonValue] | SerializeAsAny[BaseModel] | str | None = Field(
         default=None, repr=False
     )
-    color: ButtonColor = ButtonColor.SECONDARY
 
     @field_serializer("payload", when_used="json")
     def serialize_payload(self, value: dict[str, JsonValue] | BaseModel | str | None) -> str | None:
@@ -63,6 +63,11 @@ class _LabeledButton(BaseModel):
         return button
 
 
+class _LabeledButton(_Button):
+    label: str = Field(repr=False)
+    color: ButtonColor = ButtonColor.SECONDARY
+
+
 class TextButton(_LabeledButton):
     """Send the label and optional payload as a message, handled by MessageHandler."""
 
@@ -75,4 +80,20 @@ class CallbackButton(_LabeledButton):
     type: Literal[ButtonType.CALLBACK] = ButtonType.CALLBACK
 
 
-type TypedButton = Annotated[TextButton | CallbackButton, Field(discriminator="type")]
+class OpenLinkButton(_Button):
+    """Open a URL using VK's link action, without a configurable color."""
+
+    type: Literal[ButtonType.OPEN_LINK] = ButtonType.OPEN_LINK
+    label: str = Field(repr=False)
+    link: str = Field(repr=False)
+
+
+class LocationButton(_Button):
+    """Let the user choose a location and send it as a message with geo data."""
+
+    type: Literal[ButtonType.LOCATION] = ButtonType.LOCATION
+
+
+type TypedButton = Annotated[
+    TextButton | CallbackButton | OpenLinkButton | LocationButton, Field(discriminator="type")
+]

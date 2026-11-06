@@ -1,5 +1,50 @@
 # Verification
 
+## Native buttons, event answers and version 0.6.0 (2026-11-06)
+
+Implemented OpenLinkButton, LocationButton, ShowSnackbar and HTTPError.retry_after
+on main, with documentation and the keyboard example. The user authorized the
+architecture and a version/date update: metadata and lockfile now use **0.6.0**,
+with changelog date **2026-11-06**. Locked third-party versions are unchanged.
+No commit, tag or publication was performed.
+
+After the user approved the main code, added **69 regression cases** and expanded
+existing mixed-keyboard and send/edit checks. The focused suite passed **92 tests**;
+the full suite passed **429 tests**. Coverage includes public exports, fixed types,
+field rejection, all four payload forms, typed/raw keyboards, and snackbar validation
+at 90/91 Unicode characters. API-boundary cases preserve mappings, omitted data,
+positional arguments, bool results and one-time JSON encoding.
+
+Retry-After cases cover integer seconds, HTTP-date and both obsolete date forms,
+missing/invalid/overflow values, zero/past dates and RFC 850 year interpretation.
+API calls, uploads and polls expose the delay without extra requests or sleep.
+HTTP 429/503 stay distinct from VK error 6; exception attributes retain only the
+status and parsed delay. All cases use mocks, controlled UTC time and existing
+socket/DNS isolation.
+
+Tests exposed the email parser's century heuristic for four-digit HTTP years:
+0068 became 2068 and invalid 0000 became 2000. The transport now restores the
+explicit year, yielding zero for a valid past date and None for year zero. Four
+regression cases cover this correction in IMF-fixdate and asctime forms.
+The first test run also corrected an incomplete synthetic API error envelope;
+no production API response behavior changed for that fixture correction.
+
+Checks ran on **CPython 3.14.4** with the Callback extra installed:
+
+| Check | Result |
+| --- | --- |
+| `uv lock` | Passed; only the project version changed in uv.lock |
+| `uv sync --all-extras` | Passed |
+| `uv sync --locked --all-extras` | Passed |
+| Existing keyboard/transport/Long Poll tests before new cases | Passed, 77 tests |
+| New/expanded keyboard, event-answer and Retry-After suites | Passed, 92 tests |
+| `uv run --no-sync ruff check .` | Passed |
+| `uv run --no-sync ruff format --check .` | Passed, 76 files |
+| `uv run --no-sync ty check` | Passed |
+| `uv run --no-sync pytest --strict-markers` | Passed, 429 tests |
+| `git diff --check` | Passed |
+| Live VK / other Python versions | Not run; live credentials and a wider runtime matrix were not part of this verification |
+
 ## Donut events and version 0.5.0 (2026-11-05)
 
 Added **38 network-free Donut regression cases** after main-code approval, covering

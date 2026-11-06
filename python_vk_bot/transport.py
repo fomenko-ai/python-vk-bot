@@ -2,9 +2,12 @@
 
 import asyncio
 import logging
+import math
 import re
 from collections.abc import Mapping
 from contextlib import suppress
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from types import TracebackType
 from typing import BinaryIO, Literal, Self, cast
@@ -27,6 +30,53 @@ from .models.api import APIEnvelope
 
 type Parameter = str | int | float | bool | None
 type FileInput = bytes | Path | BinaryIO
+
+
+_HTTP_DATE = re.compile(
+    r"(?:"
+    r"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), [0-9]{2} "
+    r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) [0-9]{4} "
+    r"[0-9]{2}:[0-9]{2}:[0-9]{2} GMT"
+    r"|(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), "
+    r"[0-9]{2}-(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-[0-9]{2} "
+    r"[0-9]{2}:[0-9]{2}:[0-9]{2} GMT"
+    r"|(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) "
+    r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (?:[0-9]{2}| [0-9]) "
+    r"[0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}"
+    r")"
+)
+
+
+def _parse_retry_after(value: str | None) -> float | None:
+    """Parse RFC 9110 seconds or HTTP-date without retaining server data."""
+    if value is None:
+        return None
+    value = value.strip(" \t")
+    try:
+        if re.fullmatch(r"[0-9]+", value):
+            seconds = float(value)
+        elif _HTTP_DATE.fullmatch(value):
+            now = datetime.now(UTC)
+            deadline = parsedate_to_datetime(value)
+            if deadline.tzinfo is None:
+                # The obsolete asctime format has no zone; HTTP defines it as UTC.
+                deadline = deadline.replace(tzinfo=UTC)
+            if "-" in value:
+                # RFC 850's two-digit year is interpreted relative to the current century.
+                year = now.year // 100 * 100 + deadline.year % 100
+                if year > now.year + 50:
+                    year -= 100
+            else:
+                # The email parser applies a century heuristic even to four-digit years.
+                parts = value.split()
+                year = int(parts[3] if "," in value else parts[-1])
+            deadline = deadline.replace(year=year)
+            seconds = max(0.0, (deadline - now).total_seconds())
+        else:
+            return None
+    except ValueError, TypeError, OverflowError:
+        return None
+    return seconds if math.isfinite(seconds) else None
 
 
 def _read_upload(source: Path | BinaryIO) -> bytes:
@@ -125,7 +175,10 @@ class HTTPTransport:
         except httpx.RequestError:
             raise NetworkError("VK HTTP request could not complete") from None
         if not response.is_success:
-            raise HTTPError(response.status_code)
+            raise HTTPError(
+                response.status_code,
+                retry_after=_parse_retry_after(response.headers.get("Retry-After")),
+            )
         try:
             return cast(JsonValue, response.json())
         except ValueError:

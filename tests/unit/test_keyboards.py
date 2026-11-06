@@ -7,7 +7,16 @@ import pytest
 from pydantic import BaseModel, Field, JsonValue, ValidationError
 from pydantic_core import PydanticSerializationError
 
-from python_vk_bot import Bot, ButtonColor, ButtonType, CallbackButton, Keyboard, TextButton
+from python_vk_bot import (
+    Bot,
+    ButtonColor,
+    ButtonType,
+    CallbackButton,
+    Keyboard,
+    LocationButton,
+    OpenLinkButton,
+    TextButton,
+)
 
 from .helpers import MockAPI, form
 
@@ -126,7 +135,11 @@ def test_mixed_keyboard_preserves_raw_actions_and_serializes_typed_instances() -
     }
     keyboard = Keyboard(
         inline=True,
-        buttons=[[TextButton(label="Help"), raw], [CallbackButton(label="Next")]],
+        buttons=[
+            [TextButton(label="Help"), raw],
+            [CallbackButton(label="Next"), OpenLinkButton(label="Guide", link="https://vk.com")],
+            [LocationButton()],
+        ],
         future_keyboard_field=True,
     )
     wire = json.loads(keyboard.model_dump_json(exclude_none=True))
@@ -136,7 +149,11 @@ def test_mixed_keyboard_preserves_raw_actions_and_serializes_typed_instances() -
         "one_time": False,
         "buttons": [
             [{"action": {"type": "text", "label": "Help"}, "color": "secondary"}, raw],
-            [{"action": {"type": "callback", "label": "Next"}, "color": "secondary"}],
+            [
+                {"action": {"type": "callback", "label": "Next"}, "color": "secondary"},
+                {"action": {"type": "open_link", "label": "Guide", "link": "https://vk.com"}},
+            ],
+            [{"action": {"type": "location"}}],
         ],
         "future_keyboard_field": True,
     }
@@ -164,7 +181,9 @@ async def test_typed_keyboard_reaches_vk_as_nested_json(
                 CallbackButton(
                     label="Cancel", payload={"cmd": "cancel"}, color=ButtonColor.NEGATIVE
                 ),
-            ]
+            ],
+            [OpenLinkButton(label="Guide", link="https://vk.com", payload={"page": "guide"})],
+            [LocationButton()],
         ],
     )
 
@@ -197,6 +216,84 @@ async def test_typed_keyboard_reaches_vk_as_nested_json(
                     },
                     "color": "negative",
                 },
-            ]
+            ],
+            [
+                {
+                    "action": {
+                        "type": "open_link",
+                        "label": "Guide",
+                        "link": "https://vk.com",
+                        "payload": '{"page":"guide"}',
+                    }
+                }
+            ],
+            [{"action": {"type": "location"}}],
         ],
     }
+
+
+@pytest.mark.parametrize(
+    ("button_class", "fields", "kind"),
+    [
+        (OpenLinkButton, {"label": "Guide", "link": "https://vk.com"}, ButtonType.OPEN_LINK),
+        (LocationButton, {}, ButtonType.LOCATION),
+    ],
+)
+@pytest.mark.parametrize(
+    ("payload", "wire_payload"),
+    [
+        pytest.param({"cmd": "confirm"}, '{"cmd":"confirm"}', id="dictionary"),
+        pytest.param(ActionPayload(action="confirm"), '{"cmd":"confirm"}', id="model-alias"),
+        pytest.param('{ "cmd": "confirm" }', '{ "cmd": "confirm" }', id="encoded-string"),
+        pytest.param(None, None, id="omitted"),
+    ],
+)
+def test_uncolored_button_payload_and_vk_shape(
+    button_class: type[OpenLinkButton] | type[LocationButton],
+    fields: dict[str, str],
+    kind: ButtonType,
+    payload: dict[str, JsonValue] | BaseModel | str | None,
+    wire_payload: str | None,
+) -> None:
+    button = button_class.model_validate({**fields, "payload": payload})
+    action: dict[str, JsonValue] = {"type": kind.value, **fields}
+    if wire_payload is not None:
+        action["payload"] = wire_payload
+
+    assert button.type is kind
+    assert button.model_dump(mode="json") == {"action": action}
+    assert json.loads(button.model_dump_json(exclude_none=True)) == {"action": action}
+    assert button.model_dump()["payload"] == (
+        payload.model_dump() if isinstance(payload, BaseModel) else payload
+    )
+
+
+@pytest.mark.parametrize(
+    ("button_class", "fields"),
+    [
+        (OpenLinkButton, {"label": "Guide", "link": "https://vk.com", "color": "primary"}),
+        (OpenLinkButton, {"label": "Guide"}),
+        (OpenLinkButton, {"link": "https://vk.com"}),
+        (LocationButton, {"label": "Send location"}),
+        (LocationButton, {"color": "primary"}),
+        (LocationButton, {"unexpected": True}),
+    ],
+)
+def test_new_buttons_reject_unsupported_or_missing_fields(
+    button_class: type[OpenLinkButton] | type[LocationButton], fields: dict[str, JsonValue]
+) -> None:
+    with pytest.raises(ValidationError):
+        button_class.model_validate(fields)
+
+
+@pytest.mark.parametrize(
+    "button",
+    [OpenLinkButton(label="Guide", link="https://vk.com"), LocationButton()],
+)
+def test_new_button_type_is_fixed(button: OpenLinkButton | LocationButton) -> None:
+    original_type = button.type
+    with pytest.raises(ValidationError, match="type"):
+        type(button).model_validate({**button.model_dump(), "type": "text"})
+    with pytest.raises(ValidationError, match="type"):
+        button.type = "text"  # ty: ignore[invalid-assignment] -- invalid input boundary
+    assert button.type is original_type

@@ -39,8 +39,9 @@ smallest example of `Application`, `BotSettings`, `MessageHandler` and `filters.
 
 ## Ordinary and inline keyboards
 
-The example constructs Pydantic `TextButton` and `CallbackButton` objects and uses
-`ButtonColor` enum members. Dictionary payloads are JSON encoded by the library.
+The example constructs Pydantic `TextButton`, `CallbackButton`, `OpenLinkButton` and
+`LocationButton` objects and uses `ButtonColor` enum members for text/callback colors.
+Dictionary payloads are JSON encoded by the library; callback answers use `ShowSnackbar`.
 See the [keyboard API](../docs/development/keyboards.md) for model payloads and serialization.
 
 ```bash
@@ -50,10 +51,12 @@ uv run python examples/keyboards.py
 - `/keyboard` opens a persistent ordinary keyboard with **Помощь**, **О боте** and
   **Скрыть клавиатуру**. Text buttons are handled through `MessageHandler`; actions are
   selected by their JSON `payload`, independently of the displayed label. Hiding sends
-  an empty ordinary keyboard. Send `/keyboard` to show it again.
+  an empty ordinary keyboard. Send `/keyboard` to show it again. A separate location
+  button opens VK's location chooser; the selected location is sent to the chat.
 - `/inline` sends a message with **Подтвердить** and **Отмена** callback buttons.
   `MessageEventHandler` acknowledges the click with a snackbar, then edits that message
   using `conversation_message_id`. Both buttons remain available for repeated use.
+  A separate link button opens the VK bot documentation.
 
 The example validates the payload namespace, structure and supported actions. Ordinary
 message payloads are JSON strings; event payloads can also be objects. In a conversation,
