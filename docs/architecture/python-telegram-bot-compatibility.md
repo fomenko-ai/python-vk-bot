@@ -1,5 +1,33 @@
 # python-telegram-bot design reference
 
+## Native buttons, event answers and HTTP delays
+
+Rechecked on **2026-11-06** against stable **PTB 22.8**, identified by the
+[stable documentation](https://docs.python-telegram-bot.org/en/stable/):
+
+- [InlineKeyboardButton](https://docs.python-telegram-bot.org/en/stable/telegram.inlinekeyboardbutton.html)
+- [KeyboardButton](https://docs.python-telegram-bot.org/en/stable/telegram.keyboardbutton.html)
+- [CallbackQuery.answer](https://docs.python-telegram-bot.org/en/stable/telegram.callbackquery.html#telegram.CallbackQuery.answer)
+- [RetryAfter](https://docs.python-telegram-bot.org/en/stable/telegram.error.html#telegram.error.RetryAfter)
+
+OpenLinkButton and LocationButton follow the object-construction convenience of PTB's
+URL and request_location buttons. VK uses one Keyboard with independent action types;
+its location action has no label or color and lets the user choose a location.
+These models extend decision 0003's private serialization implementation and existing
+TypedButton union. Keyboard stays in models/messages.py. Raw dictionaries are retained.
+
+ShowSnackbar is a focused outgoing Pydantic model in models/event_answers.py, encoded
+at the Bot boundary. PTB's callback answer takes text directly and has no corresponding
+ShowSnackbar model. This library exposes the VK event_data object without introducing
+another handler, callback shortcut or generic action framework.
+
+PTB RetryAfter reads Telegram Bot API parameters and exposes int/timedelta seconds.
+HTTPError.retry_after here is float/None parsed from the HTTP Retry-After header in
+the transport. It does not infer a delay from VK error 6 or schedule retries.
+The existing polling recovery policy remains separate. These are protocol-specific
+contracts, not a Telegram compatibility layer. See the [API contract](../development/api-compatibility.md)
+and [keyboard API](../development/keyboards.md).
+
 ## Donut event handlers
 
 Rechecked on **2026-11-04** against stable **PTB 22.8**, as identified by the

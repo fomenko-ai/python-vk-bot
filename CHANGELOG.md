@@ -6,6 +6,18 @@ All notable changes will be documented here, following Keep a Changelog.
 
 -
 
+## 0.6.0 - 2026-11-06
+
+### Added
+
+- `OpenLinkButton` and `LocationButton` with automatic payload serialization, mixed
+  typed/raw keyboards, and `ButtonType.OPEN_LINK` / `ButtonType.LOCATION` values.
+- `ShowSnackbar` for typed callback answers through `Bot.send_message_event_answer`,
+  validating VK's 90-character text limit while retaining raw mapping support.
+- Optional `HTTPError.retry_after` in seconds, read from HTTP `Retry-After` integer
+  seconds or HTTP-date. No automatic retries or waits are added; VK API error 6
+  retains its separate `RateLimitError` behavior.
+
 ## 0.5.0 - 2026-11-05
 
 ### Added

@@ -5,7 +5,7 @@
 and other Python implementations have not been verified. The default contributor
 interpreter remains Python 3.14.
 
-The library installs, imports and passes all 370 regression tests on the checked
+The library installs, imports and passes all 439 regression tests on the checked
 3.9–3.14 interpreters. Before the media API transfer, both base wheel installation and sdist installation with the
 Callback extra were also checked in clean Python 3.9 consumer environments.
 See [exact results and reproduction commands](verification.md).
@@ -147,3 +147,11 @@ regressions. Polling stop and runner cancellation share one cancellation request
 run so suspended cleanup is not interrupted a second time. Both operation orders and
 repeated runner cancellation have regression coverage. See the dated verification log
 for current results and the historical record for the preceding release.
+
+## Native buttons and HTTP delay metadata transfer (2026-11-06)
+
+Source `ad23faf6641b50f761c8b2c0dd8b1d25da3c4e60` adds OpenLinkButton,
+LocationButton, ShowSnackbar and HTTPError.retry_after. Runtime annotations use
+Union/Optional/TypeAlias; HTTP dates use timezone.utc and portable exception syntax.
+All 439 tests and syntax checks pass on Python 3.9–3.14. By explicit user request, version 0.6.0 and release date 2026-11-06 match main.
+Branch-specific dependencies and enum fallbacks are preserved. See [verification](verification.md).

@@ -163,11 +163,16 @@ Pydantic v2 validates configuration, API envelopes, used response structures and
 boundaries. Unknown VK fields survive. Update.object retains the original JSON object,
 with parsed message/message_event/donut_subscription views for handlers. There is
 intentionally no generated model collection or repeated validation in each handler.
-Keyboard accepts typed TextButton
-and CallbackButton models alongside raw VK action dictionaries. Typed buttons validate
+Keyboard accepts typed TextButton, CallbackButton, OpenLinkButton and LocationButton
+models alongside raw VK action dictionaries. Typed buttons validate
 their fields and serialize flat inputs into VK action envelopes in JSON mode. ButtonColor
 and ButtonType expose the supported values as string-valued enum members. Raw action dictionaries
 and extra capabilities remain extensible. See the [keyboard API](../development/keyboards.md).
+
+ShowSnackbar is an outgoing event-answer model serialized by Bot into event_data.
+It validates the VK text limit while raw mappings remain available. HTTPTransport
+parses Retry-After for non-success HTTP responses into HTTPError.retry_after; it
+does not schedule retries. The polling loop owns its separate recovery policy.
 
 HTTPX AsyncClient provides async pooling, explicit timeouts, injectable transports and
 MockTransport for network-free regression tests. aiohttp ClientSession also supports these

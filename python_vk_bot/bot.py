@@ -30,6 +30,7 @@ from .models.attachments import (
     PhotoAttachment,
     serialize_attachment,
 )
+from .models.event_answers import ShowSnackbar
 from .models.messages import Keyboard, Message, MessagePage, User
 from .transport import FileInput, HTTPTransport, Parameter
 
@@ -343,15 +344,19 @@ class Bot:
         event_id: str,
         user_id: int,
         peer_id: int,
-        event_data: Optional[Mapping[str, JsonValue]] = None,
+        event_data: Union[ShowSnackbar, Mapping[str, JsonValue], None] = None,
     ) -> bool:
+        if isinstance(event_data, ShowSnackbar):
+            serialized_event_data = event_data.model_dump_json(by_alias=True)
+        else:
+            serialized_event_data = json.dumps(dict(event_data)) if event_data is not None else None
         result = await self.request(
             "messages.sendMessageEventAnswer",
             {
                 "event_id": event_id,
                 "user_id": user_id,
                 "peer_id": peer_id,
-                "event_data": json.dumps(dict(event_data)) if event_data is not None else None,
+                "event_data": serialized_event_data,
             },
         )
         return _integer(result) == 1

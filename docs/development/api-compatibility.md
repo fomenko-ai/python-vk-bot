@@ -1,6 +1,7 @@
 # VK API support
 
-Verification date: **2026-11-04** (Donut events). Implementation target: **5.199**, represented as a string.
+Verification date: **2026-11-06** (buttons and event answers). Implementation target:
+**5.199**, represented as a string.
 The official [version history](https://dev.vk.com/ru/reference/versions) lists 5.199 as
 the newest documented version. Its entry describes internal changes without a method,
 parameter, or response change. The official [VKCOM schema](https://github.com/VKCOM/vk-api-schema)
@@ -22,7 +23,7 @@ before changing version-dependent behavior.
 | photos.getMessagesUploadServer / photos.saveMessagesPhoto | Bot.upload_photo; multipart photo upload and typed saved attachment |
 | docs.getMessagesUploadServer / docs.save | Bot.upload_document; doc/audio_message upload and typed saved attachment |
 | messages.getByConversationMessageId | Bot.get_message; typed Message or None for an empty items list |
-| messages.sendMessageEventAnswer | Bot.send_message_event_answer; bool result |
+| messages.sendMessageEventAnswer | Bot.send_message_event_answer; ShowSnackbar or raw mapping, bool result |
 | users.get | Bot.get_user_info; typed User or None; optional profile fields |
 | groups.getLongPollServer | Bot.get_long_poll_server; secret key and typed cursor |
 | Bots Long Poll a_check | Async LongPoll; failed=1/2/3 recovery and bounded retry delay |
@@ -49,6 +50,53 @@ before changing version-dependent behavior.
   the polling server. Request read timeout exceeds the requested wait.
 - Event envelope: type, group_id, event_id, v, object. Callback secret is checked before
   validation and is excluded from the dispatched Update. Unknown fields are retained.
+
+## Buttons and event answers
+
+Rechecked on **2026-11-06** at implementation time through direct HTTPS retrieval:
+the [version history](https://dev.vk.com/ru/reference/versions) still lists **5.199** first.
+The [button types](https://dev.vk.com/ru/api/bots/development/keyboard/key-types),
+[keyboard structure](https://dev.vk.com/ru/api/bots/development/keyboard),
+[callback actions](https://dev.vk.com/ru/api/bots/development/keyboard/callback-keys) and
+[answer method](https://dev.vk.com/ru/method/messages.sendMessageEventAnswer) establish
+the outgoing contracts. The official
+[object schema](https://github.com/VKCOM/vk-api-schema/blob/master/messages/objects.json)
+also describes open_link (label, link, optional payload) and location (optional payload).
+
+- Typed open-link/location buttons serialize inside `action`, without color. Only
+  text/callback buttons use color. A location row allows at most two buttons.
+- VK documents payload as a JSON-object string of at most 255 characters. Payload
+  strings remain caller-controlled; the library does not validate these limits.
+- `ShowSnackbar` serializes a flat action object with fixed type and text. Its
+  90-character maximum follows the callback guide. The raw mapping path remains
+  available for other VK actions and does not apply model validation.
+- The method uses a community token with the `messages` permission and requires
+  event_id, user_id and peer_id from the message_event. Its success result is 1.
+
+Documentation uncertainty: the button-types table mentions message_new for callback
+payloads, while its callback description and dedicated callback guide specify
+message_event. CallbackButton follows the latter; no message_new delivery is inferred
+for callback clicks. No authenticated delivery was tested. See the
+[keyboard guide](keyboards.md) for limits and the precise serialization contract.
+
+## HTTP Retry-After
+
+`HTTPError(status_code, *, retry_after=None)` exposes an optional delay in seconds.
+The shared HTTP transport reads the header for every non-success HTTP response,
+including API calls, uploads and Long Poll requests. It accepts integer nonnegative
+ASCII seconds and HTTP-date (including obsolete HTTP date forms), following
+[RFC 9110 sections 10.2.3 and 5.6.7](https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.3).
+Date delays are relative to the local UTC clock; clock skew can affect the result.
+Past dates produce 0.0. Missing, malformed or non-finite values produce None; decimal
+fractions, signs and exponent notation are not valid numeric header values.
+
+The exception stores only status_code and the parsed delay as custom attributes.
+It does not attach the response, headers, credentials or request body. Transport and
+Bot methods do not wait or retry. The polling loop retains its existing recovery
+policy and does not use this header to change its backoff.
+HTTP 429 is HTTPError; a successful HTTP response with VK error 6 is RateLimitError.
+No delay is invented from an API error code. VK is not assumed to guarantee this
+header; live availability remains unverified.
 
 ## Donut contracts
 
@@ -130,9 +178,11 @@ The event API version is configured there independently from the outbound reques
 - The schema describes message_event.payload as a string; deployed integrations may use
   JSON objects. The model intentionally preserves either form without automatic decoding.
 - Additional message and keyboard fields are retained, not fully validated. Keyboard accepts
-  typed text/callback buttons and raw VK action dictionaries; raw actions are caller-controlled.
+  typed text/callback/open-link/location buttons and raw VK action dictionaries;
+  raw actions are caller-controlled.
 - No schema generator is justified for the small current coverage.
-- Network-free regression tests cover the implemented behavior; live-token integration is not run.
+- Network-free regression tests cover button/event-answer serialization, validation,
+  HTTP Retry-After and existing behavior. Live integration is not run.
   See [verification results](verification.md).
 - No automatic community provisioning, bulk sending, persistent state,
   distributed deduplication, or durable event queue is provided.

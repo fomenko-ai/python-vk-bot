@@ -37,7 +37,7 @@ See the [examples guide](examples/README.md) for setup, required events and run 
 | Example | Description |
 | --- | --- |
 | [Echo bot](examples/echo.py) | Reply to text messages using Bots Long Poll |
-| [Keyboards](examples/keyboards.py) | Ordinary text buttons and inline callback buttons with message editing |
+| [Keyboards](examples/keyboards.py) | Text, callback, link and location buttons; typed snackbar answers and message editing |
 | [Interactive map](examples/interactive_map.py) | Generate, upload and replace a PNG using navigation buttons |
 | [Callback receiver](examples/callback.py) | Receive events through an ASGI application |
 | [Background result](examples/background_result.py) | Return a local calculation through the unified event queue |

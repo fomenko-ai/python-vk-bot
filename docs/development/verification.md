@@ -1,5 +1,33 @@
 # Verification
 
+## Native buttons, snackbar and Retry-After transfer (2026-11-06)
+
+Source main commit `ad23faf6641b50f761c8b2c0dd8b1d25da3c4e60` is transferred
+into the working tree on compat/py39 base `29da37e`. No target commit was created,
+at the user's request. The target branch is checked out for review.
+
+Production code, examples, shared documentation and the approved 69 regression cases
+are included. Union/Optional/TypeAlias annotations, timezone.utc and parenthesized
+exception handling preserve Python 3.9 compatibility. Native/fallback string enums
+and compatibility-only tests remain intact. By explicit user request, version 0.6.0 and release date 2026-11-06 match main.
+Dependency requirements and Python targets are retained; uv.lock is synchronized.
+Main-only verification history is excluded.
+
+All checks passed: locked all-extras uv sync, Ruff lint, Ruff format, ty and
+pytest --strict-markers on Python 3.14.4 (439 tests). Initial Ruff formatting/import
+findings were corrected. Initial uv sync was blocked by sandbox cache permissions;
+the approved rerun passed. Syntax checks passed for all 22 package sources, and
+isolated locked installations plus all 439 tests passed on each interpreter:
+3.9.25, 3.10.20, 3.11.15, 3.12.13, 3.13.14 and 3.14.4.
+Git diff whitespace checks passed. No live VK operations or packaging builds were run.
+The source's API verification record is preserved; this transfer changes no VK target
+version or API semantics. No push, tag or publication was performed.
+
+After the metadata follow-up, uv lock, uv sync, locked all-extras sync, Ruff lint
+and format, ty and all 439 tests passed again on Python 3.14.4. Only the local
+package version changed in uv.lock. The interpreter matrix was not repeated for
+this metadata-only update; runtime code and dependency versions are unchanged.
+
 ## Donut event transfer (2026-11-05)
 
 Selectively transferred main commit `31acf2b1d21543c6c72bb9b1f9e453bf96b3b49e`
