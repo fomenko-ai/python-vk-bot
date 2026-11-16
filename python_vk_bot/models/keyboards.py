@@ -15,6 +15,8 @@ from pydantic import (
     model_serializer,
 )
 
+from python_vk_bot.limits import MAX_BUTTON_LABEL_LENGTH
+
 
 class ButtonColor(StrEnum):
     """Colors documented by the VK keyboard guide."""
@@ -64,7 +66,7 @@ class _Button(BaseModel):
 
 
 class _LabeledButton(_Button):
-    label: str = Field(repr=False)
+    label: str = Field(repr=False, max_length=MAX_BUTTON_LABEL_LENGTH)
     color: ButtonColor = ButtonColor.SECONDARY
 
 
@@ -84,7 +86,7 @@ class OpenLinkButton(_Button):
     """Open a URL using VK's link action, without a configurable color."""
 
     type: Literal[ButtonType.OPEN_LINK] = ButtonType.OPEN_LINK
-    label: str = Field(repr=False)
+    label: str = Field(repr=False, max_length=MAX_BUTTON_LABEL_LENGTH)
     link: str = Field(repr=False)
 
 

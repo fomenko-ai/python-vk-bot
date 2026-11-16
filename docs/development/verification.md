@@ -1,5 +1,16 @@
 # Verification
 
+## Keyboard limits, version 0.7.0 (2026-11-16)
+
+Verified on Python 3.14.4. Keyboard regression coverage includes exact dimension
+boundaries and excesses for inline/reply keyboards with typed/raw buttons;
+40-character Unicode labels and assignment; long open-link URLs; location/vkpay
+row limits; nested list/action/label mutations before both JSON serialization paths;
+failed field assignment and repair to an empty removal keyboard; unknown action
+preservation; and rejection before HTTP in both send and edit operations.
+The keyboard module has 74 passing cases, including 35 new cases. No live VK
+requests are used by these tests. See the [keyboard contract](keyboards.md).
+
 ## Native buttons, event answers and version 0.6.0 (2026-11-06)
 
 Implemented OpenLinkButton, LocationButton, ShowSnackbar and HTTPError.retry_after

@@ -4,7 +4,19 @@ All notable changes will be documented here, following Keep a Changelog.
 
 ## Unreleased
 
--
+## 0.7.0 - 2026-11-16
+
+### Added
+
+- Keyboard limit constants in `python_vk_bot.limits`.
+
+### Changed
+
+- **Breaking:** keyboards reject excessive button/row counts, location/vkpay row
+  sizes and known labels over 40 characters at validation and JSON serialization.
+  Typed text/callback/open-link labels also validate assignments. Open-link label
+  length is a library policy; URL length is unchanged. See the
+  [validation and migration guidance](docs/development/keyboards.md#references-and-limits).
 
 ## 0.6.0 - 2026-11-06
 
