@@ -1,6 +1,7 @@
 # VK API support
 
-Verification date: **2026-11-06** (buttons and event answers). Implementation target:
+Verification date: **2026-11-16** (keyboard limits; other contracts retain their dates below).
+Implementation target:
 **5.199**, represented as a string.
 The official [version history](https://dev.vk.com/ru/reference/versions) lists 5.199 as
 the newest documented version. Its entry describes internal changes without a method,
@@ -52,6 +53,28 @@ before changing version-dependent behavior.
   validation and is excluded from the dispatched Update. Unknown fields are retained.
 
 ## Buttons and event answers
+
+### Keyboard limits verification, 2026-11-16
+
+Fresh direct HTTPS retrieval of the official
+[version history](https://dev.vk.ru/ru/reference/versions) lists **5.199** first.
+The .com version-history request returned HTTP 500; the .ru page succeeded.
+The official [keyboard guide](https://dev.vk.com/ru/api/bots/development/keyboard)
+confirms ordinary keyboards: 40 buttons, 10 rows, five buttons per row; inline:
+10 buttons, six rows, five buttons per row. The
+[button types guide](https://dev.vk.com/ru/api/bots/development/keyboard/key-types)
+confirms 40-character text/callback labels, at most two buttons in any location row,
+and a single button in any vkpay row. Both guides were retrieved directly because
+the web tool could not open them. No authenticated API requests were made.
+
+`python_vk_bot.limits` centralizes these limits. Keyboard validates dimensions and
+known text/callback/open-link labels, including raw mappings, at construction,
+assignment and JSON serialization. Typed label fields also validate assignments.
+The shared 40-character open-link label maximum is a library policy: the official
+open_link section does not specify a numeric limit. Unknown actions retain their
+fields and are subject only to general dimensions (plus the documented raw vkpay
+row rule). Payload validation is unchanged. Unicode character-count semantics
+beyond Python `len` and live server boundary behavior remain unverified.
 
 Rechecked on **2026-11-06** at implementation time through direct HTTPS retrieval:
 the [version history](https://dev.vk.com/ru/reference/versions) still lists **5.199** first.

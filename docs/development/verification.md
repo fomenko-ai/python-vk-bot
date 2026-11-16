@@ -1,5 +1,27 @@
 # Verification
 
+## Keyboard limits transfer (2026-11-16)
+
+Source main commit `94921e3714ffbc35ae407730c027b2cb00695d8c` is transferred
+to the working tree on compat/py39 base `3174a4e`. No target commit is created
+at the user's request. Code, shared documentation and 35 approved keyboard
+regression cases are included. `Self` comes from typing_extensions; evaluated
+model and test annotations use Union instead of Python 3.10 union operators.
+Native/fallback enums and compatibility-only regressions are retained.
+
+By explicit user request, version 0.7.0 and changelog date 2026-11-16 match
+main. Branch-specific dependency requirements and Python targets are preserved;
+the lockfile is synchronized. Main-only verification history is excluded.
+No publication is claimed.
+
+Passed on Python 3.14.4: `uv sync --locked --all-extras`, Ruff lint, Ruff format
+check, ty and `pytest --strict-markers` (474 tests, including 74 keyboard cases).
+Both compatibility scripts passed: syntax for 23 package sources and all 474
+tests on each of Python 3.9.25, 3.10.20, 3.11.15, 3.12.13, 3.13.14 and 3.14.4.
+Initial sandbox uv-cache errors were resolved by approved elevated execution;
+an import sorting finding was corrected before final checks. No live VK requests
+or consumer packaging checks were run for this transfer.
+
 ## Native buttons, snackbar and Retry-After transfer (2026-11-06)
 
 Source main commit `ad23faf6641b50f761c8b2c0dd8b1d25da3c4e60` is transferred

@@ -56,8 +56,9 @@ including assignment validation.
 Raw VK button dictionaries are also accepted inside `Keyboard.buttons`, including
 mixed rows. They retain their structure and unknown JSON fields; their action
 semantics are caller-controlled. Code inspecting an entry must distinguish
-dictionaries from typed button instances. No local numeric label/payload/row limits
-or complete VK keyboard validation are claimed.
+dictionaries from typed button instances. Keyboard dimensions and labels of known
+text/callback/open-link actions are checked locally as described below. Unknown
+action semantics and payload validation remain caller-controlled.
 
 ## Payloads and serialization
 
@@ -133,7 +134,7 @@ are accepted and the method returns a bool. There is no callback-answer shortcut
 
 ## References and limits
 
-Verified on 2026-11-06 against VK API 5.199. The official
+Verified on 2026-11-16 against VK API 5.199. The official
 [keyboard guide](https://dev.vk.com/ru/api/bots/development/keyboard) documents
 `secondary`; the [VKCOM object schema](https://github.com/VKCOM/vk-api-schema/blob/master/messages/objects.json)
 uses `default` instead. Typed colors follow the guide; no alias conversion is performed.
@@ -142,8 +143,34 @@ documents at most two buttons in a row containing a location button. Payloads ar
 JSON-object strings of at most 255 characters, and text/callback labels have a
 40-character limit. The guide does not state a separate numeric open-link label limit.
 Ordinary keyboards allow 40 buttons, up to 10 rows of five; inline keyboards allow
-10 buttons, up to six rows of five. These are VK limits; the library does not locally
-validate keyboard dimensions, payload length/JSON strings or label length.
+10 buttons, up to six rows of five. Total and per-row limits apply simultaneously.
+A row containing location permits at most two buttons; a raw vkpay action must be
+alone in its row. These limits apply equally to typed and raw buttons.
+
+Import the `MAX_*` constants from `python_vk_bot.limits`. They are `Final[int]`
+values describing library validation, not runtime configuration. This module shares
+the public alpha stability policy described above.
+
+`TextButton`, `CallbackButton` and `OpenLinkButton` enforce a 40-character label
+maximum at construction and assignment. For open-link labels this is a library
+policy shared with text/callback labels, not an explicitly documented VK numeric
+limit. `link` URL length is not restricted by this label limit. Character counts
+use Python `len`, without truncation or byte/grapheme counting.
+
+`Keyboard` validates dimensions and known labels at construction, field assignment
+and JSON serialization (`model_dump(mode="json")` / `model_dump_json()`). Serialization
+rechecks nested lists and raw dictionaries, including edits made after construction.
+Construction/assignment failures raise Pydantic `ValidationError`; serialization
+failures raise `PydanticSerializationError`. Dimension/raw-label messages report
+counts and row/button positions, without button contents. As with Pydantic after
+validators, a failed keyboard assignment can leave the assigned value in place;
+repair it or discard the instance before reuse. Serialization still rejects it.
+Python-mode dumps do not recheck nested mutations. Explicit validation bypasses
+such as `model_construct` and unchecked `model_copy(update=...)` are not supported
+construction paths. `Keyboard(buttons=[])` remains valid for keyboard removal.
+
+Payload length/JSON strings, unknown action semantics, empty rows and combinations
+of placement flags are not fully validated by these checks.
 The [callback guide](https://dev.vk.com/ru/api/bots/development/keyboard/callback-keys)
 documents the 90-character snackbar limit enforced by `ShowSnackbar`.
 See [API verification](api-compatibility.md) for uncertainties. Live delivery has not

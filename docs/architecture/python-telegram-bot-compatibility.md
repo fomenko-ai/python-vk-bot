@@ -89,6 +89,15 @@ HTTP acknowledgement waits for dispatch, not just insertion into volatile memory
 
 ## Keyboard API reference
 
+Keyboard limits reviewed on **2026-11-16** against stable **PTB 22.8**, identified
+by the [stable InlineKeyboardMarkup documentation](https://docs.python-telegram-bot.org/en/stable/telegram.inlinekeyboardmarkup.html).
+The row-based button layout remains the conceptual reference. VK's own dimensions,
+location/vkpay row rules and label policy are centralized in `python_vk_bot.limits`
+and enforced by existing Pydantic models; no Telegram numeric limits are imported.
+Keyboard JSON serialization rechecks mutable rows and raw dictionaries. No layout
+builder or additional validator abstraction is introduced. See the
+[keyboard validation contract](../development/keyboards.md#references-and-limits).
+
 Rechecked on **2026-11-02** against stable **PTB 22.8**:
 
 - [Inline keyboard example](https://docs.python-telegram-bot.org/en/v22.8/examples.inlinekeyboard.html)

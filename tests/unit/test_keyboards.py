@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from functools import partial
 from typing import Literal, Optional, Union
 
 import pytest
@@ -301,3 +302,136 @@ def test_new_button_type_is_fixed(button: OpenLinkButton | LocationButton) -> No
     with pytest.raises(ValidationError, match="type"):
         button.type = "text"  # ty: ignore[invalid-assignment] -- invalid input boundary
     assert button.type is original_type
+
+
+@pytest.mark.parametrize("inline", [False, True])
+@pytest.mark.parametrize("raw", [False, True])
+@pytest.mark.parametrize("dimension", ["total", "rows", "row_width"])
+def test_keyboard_dimension_boundaries(inline: bool, raw: bool, dimension: str) -> None:
+    button: Union[TextButton, dict[str, JsonValue]] = (
+        {"action": {"type": "text", "label": "Choose"}} if raw else TextButton(label="Choose")
+    )
+    if dimension == "total":
+        sizes = [5] * (2 if inline else 8)
+        invalid_sizes = [*sizes, 1]
+        error = f"Keyboard buttons: maximum {10 if inline else 40}, got {11 if inline else 41}"
+    elif dimension == "rows":
+        sizes = [1] * (6 if inline else 10)
+        invalid_sizes = [*sizes, 1]
+        error = f"Keyboard rows: maximum {len(sizes)}, got {len(sizes) + 1}"
+    else:
+        sizes = [5]
+        invalid_sizes = [6]
+        error = "Row 1 buttons: maximum 5, got 6"
+
+    keyboard = Keyboard(inline=inline, buttons=[[button] * size for size in sizes])
+    assert [len(row) for row in json.loads(keyboard.model_dump_json())["buttons"]] == sizes
+    with pytest.raises(ValidationError, match=error):
+        Keyboard(inline=inline, buttons=[[button] * size for size in invalid_sizes])
+
+
+@pytest.mark.parametrize("kind", ["text", "callback", "open_link"])
+@pytest.mark.parametrize("raw", [False, True])
+def test_label_length_at_construction_and_assignment(kind: str, raw: bool) -> None:
+    label = "Я" * 40
+    fields = {"type": kind, "label": label, "payload": "private-payload"}
+    if kind == "open_link":
+        fields["link"] = "https://example.com/" + "a" * 200
+    if raw:
+        keyboard = Keyboard(buttons=[[{"action": fields}]])
+        assert json.loads(keyboard.model_dump_json())["buttons"][0][0]["action"] == fields
+        with pytest.raises(ValidationError, match="label characters: maximum 40, got 41"):
+            Keyboard(buttons=[[{"action": {**fields, "label": label + "Я"}}]])
+    else:
+        model = {"text": TextButton, "callback": CallbackButton, "open_link": OpenLinkButton}[kind]
+        button = model.model_validate(fields)
+        with pytest.raises(ValidationError, match="at most 40 characters"):
+            model.model_validate({**fields, "label": label + "Я"})
+        with pytest.raises(ValidationError, match="at most 40 characters"):
+            button.label = label + "Я"
+        assert button.label == label
+
+
+@pytest.mark.parametrize("raw", [False, True])
+def test_location_row_limit_counts_all_buttons(raw: bool) -> None:
+    location: Union[LocationButton, dict[str, JsonValue]] = (
+        {"action": {"type": "location"}} if raw else LocationButton()
+    )
+    Keyboard(buttons=[[location, TextButton(label="Choose")]])
+    with pytest.raises(ValidationError, match="Row 1 buttons: maximum 2, got 3"):
+        Keyboard(buttons=[[TextButton(label="A"), location, TextButton(label="B")]])
+
+
+def test_raw_vkpay_requires_its_own_row() -> None:
+    payment: dict[str, JsonValue] = {"action": {"type": "vkpay", "hash": "caller-controlled"}}
+    Keyboard(buttons=[[payment]])
+    with pytest.raises(ValidationError, match="Row 1 buttons: maximum 1, got 2"):
+        Keyboard(buttons=[[TextButton(label="Choose"), payment]])
+
+
+@pytest.mark.parametrize("mutation", ["row", "total", "rows", "label", "action"])
+@pytest.mark.parametrize("json_string", [False, True])
+def test_serialization_rechecks_nested_mutations(mutation: str, json_string: bool) -> None:
+    action: dict[str, JsonValue] = {"type": "text", "label": "Choose"}
+    keyboard = Keyboard(inline=True, buttons=[[{"action": action}]])
+    if mutation == "row":
+        keyboard.buttons[0].extend([TextButton(label="Choose")] * 5)
+    elif mutation == "total":
+        keyboard.buttons.extend([[TextButton(label="Choose")] * 5] * 2)
+    elif mutation == "rows":
+        keyboard.buttons.extend([[TextButton(label="Choose")]] * 6)
+    else:
+        raw_button = keyboard.buttons[0][0]
+        assert isinstance(raw_button, dict)
+        nested = raw_button["action"]
+        assert isinstance(nested, dict)
+        if mutation == "label":
+            nested["label"] = "private-label" * 4
+        else:
+            nested["type"] = "location"
+            keyboard.buttons[0].extend([TextButton(label="Choose")] * 2)
+
+    serialize = (
+        keyboard.model_dump_json if json_string else partial(keyboard.model_dump, mode="json")
+    )
+    with pytest.raises(PydanticSerializationError, match="maximum") as error:
+        serialize()
+    assert "private-label" not in str(error.value)
+
+
+def test_keyboard_field_assignment_and_repair() -> None:
+    keyboard = Keyboard(buttons=[[TextButton(label="Choose")] * 4 for _ in range(3)])
+    with pytest.raises(ValidationError, match="Keyboard buttons: maximum 10, got 12"):
+        keyboard.inline = True
+    with pytest.raises(PydanticSerializationError, match="maximum 10"):
+        keyboard.model_dump_json()
+    keyboard.inline = False
+    with pytest.raises(ValidationError, match="Row 1 buttons: maximum 5, got 6"):
+        keyboard.buttons = [[TextButton(label="Choose")] * 6]
+    keyboard.buttons = []
+    assert json.loads(keyboard.model_dump_json())["buttons"] == []
+
+
+def test_unknown_action_retains_unrestricted_unknown_fields() -> None:
+    raw: dict[str, JsonValue] = {
+        "action": {"type": "future_action", "label": "Я" * 100, "future": {"enabled": True}}
+    }
+    keyboard = Keyboard(buttons=[[raw]])
+    assert json.loads(keyboard.model_dump_json())["buttons"] == [[raw]]
+
+
+@pytest.mark.parametrize("operation", ["send", "edit"])
+async def test_invalid_mutated_keyboard_never_reaches_http(
+    bot: Bot, api: MockAPI, operation: str
+) -> None:
+    keyboard = Keyboard(buttons=[[TextButton(label="Choose")]])
+    keyboard.buttons[0].extend([TextButton(label="Choose")] * 5)
+    async with bot:
+        request = (
+            bot.send_message(7, "Choose", keyboard=keyboard, random_id=17)
+            if operation == "send"
+            else bot.edit_message(7, "Choose", conversation_message_id=12, keyboard=keyboard)
+        )
+        with pytest.raises(PydanticSerializationError, match="maximum 5"):
+            await request
+    assert not api.requests
