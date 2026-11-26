@@ -1,5 +1,33 @@
 # Verification
 
+## Detailed send results transfer (2026-11-26, production stage)
+
+Source main commit `c9b7f13dfe3d56e1b286620fc61216707e754823` is selectively
+transferred onto compat/py39 base `ee2a848`. No target commit is created.
+Production methods, public exports, response models and shared documentation
+are included. Optional/Union annotations preserve Python 3.9 model evaluation.
+By subsequent explicit user request, version 0.8.0 and changelog date 2026-11-26
+match the source commit. Branch dependencies and Python targets are retained.
+Main-only verification history is excluded.
+
+Passed: uv sync --all-extras; uv sync --locked --all-extras; Ruff lint and
+format check; ty; git diff --check; pytest --strict-markers on Python 3.14.4
+(474 existing tests). Syntax checks passed for 23 package sources on Python
+3.9.25, 3.10.20, 3.11.15, 3.12.13, 3.13.14 and 3.14.4. The isolated runtime
+script passed all 474 existing tests on each of those six interpreters.
+Initial transfer errors in two upload call sites and formatting were corrected
+before the successful rerun. Sandbox cache restrictions required elevated uv.
+
+After the version/date update, uv lock changed only the local project version.
+All-extras sync, locked sync, Ruff lint/format, ty and all 474 existing tests
+passed again on Python 3.14.4. The interpreter matrix preceded this metadata-only
+update and was not repeated; runtime code and dependencies are unchanged.
+
+The new test_message_send_ids.py from main is deliberately not transferred yet:
+local rules require approval of the transferred production code before test edits.
+These results establish existing regression coverage, not the source commit's
+110 detailed-send cases. No live VK calls, packaging checks, commit or push.
+
 ## Keyboard limits transfer (2026-11-16)
 
 Source main commit `94921e3714ffbc35ae407730c027b2cb00695d8c` is transferred

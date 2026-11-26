@@ -19,8 +19,10 @@ from .models.api import (
     DocumentUpload,
     LongPollServer,
     MessageDeleteResult,
+    MessageSendResult,
     PhotoUpload,
     UploadServer,
+    _MessageSendResponse,
 )
 from .models.attachments import (
     Attachment,
@@ -67,6 +69,52 @@ def _message_identifier(
     if type(identifier) is not int or identifier <= 0:
         raise ValueError("Message identifiers must be positive integers")
     return identifier
+
+
+def _send_parameters(
+    text: str,
+    random_id: Optional[int],
+    keyboard: Optional[Keyboard],
+    attachment: Union[str, Attachment, None],
+    dont_parse_links: bool,
+) -> dict[str, Parameter]:
+    attachment_id = serialize_attachment(attachment)
+    if not text and not attachment_id:
+        raise ValueError("Provide text or an attachment")
+    return {
+        "message": text,
+        "random_id": _random_id(random_id),
+        "keyboard": keyboard.model_dump_json(exclude_none=True) if keyboard else None,
+        "attachment": attachment_id,
+        "dont_parse_links": dont_parse_links,
+    }
+
+
+def _peer_identifier(peer_id: int) -> int:
+    if type(peer_id) is not int or peer_id == 0:
+        raise ValueError("peer_id must be a nonzero integer")
+    return peer_id
+
+
+def _message_send_result(payload: JsonValue, peer_id: int) -> MessageSendResult:
+    if not isinstance(payload, list) or len(payload) != 1:
+        raise InvalidResponseError("Expected one message send result")
+    sent = _parse(_MessageSendResponse, payload[0])
+    if sent.peer_id != peer_id:
+        raise InvalidResponseError("Message send result has an unexpected recipient")
+    if sent.error is not None:
+        error_type = RateLimitError if sent.error.code == 6 else APIError
+        raise error_type(sent.error.code, "messages.send")
+    if sent.message_id is None or sent.conversation_message_id is None:
+        raise InvalidResponseError("Message send result has no message identifiers")
+    if sent.conversation_message_id == 0:
+        raise InvalidResponseError("Message send result has no usable conversation identifier")
+    return MessageSendResult(
+        peer_id=sent.peer_id,
+        message_id=sent.message_id or None,
+        conversation_message_id=sent.conversation_message_id,
+        **(sent.model_extra or {}),
+    )
 
 
 class Bot:
@@ -134,26 +182,38 @@ class Bot:
         peer_id: int,
         text: str = "",
         *,
-        random_id: Union[int, None] = None,
-        keyboard: Union[Keyboard, None] = None,
-        attachment: Union[Union[str, Attachment], None] = None,
+        random_id: Optional[int] = None,
+        keyboard: Optional[Keyboard] = None,
+        attachment: Union[str, Attachment, None] = None,
         dont_parse_links: bool = False,
     ) -> int:
-        attachment_id = serialize_attachment(attachment)
-        if not text and not attachment_id:
-            raise ValueError("Provide text or an attachment")
+        parameters = _send_parameters(text, random_id, keyboard, attachment, dont_parse_links)
         result = await self.request(
             "messages.send",
-            {
-                "peer_id": peer_id,
-                "message": text,
-                "random_id": _random_id(random_id),
-                "keyboard": keyboard.model_dump_json(exclude_none=True) if keyboard else None,
-                "attachment": attachment_id,
-                "dont_parse_links": dont_parse_links,
-            },
+            {"peer_id": peer_id, **parameters},
         )
         return _integer(result)
+
+    async def send_message_and_get_ids(
+        self,
+        peer_id: int,
+        text: str = "",
+        *,
+        random_id: Optional[int] = None,
+        keyboard: Optional[Keyboard] = None,
+        attachment: Union[str, Attachment, None] = None,
+        dont_parse_links: bool = False,
+    ) -> MessageSendResult:
+        """Send to one peer and return IDs; an unavailable global ID becomes None.
+
+        Uses peer_ids to obtain a conversation-scoped ID. Recipient errors raise
+        APIError (RateLimitError for code 6); malformed results raise InvalidResponseError.
+        No automatic retry or fallback send is performed.
+        """
+        _peer_identifier(peer_id)
+        parameters = _send_parameters(text, random_id, keyboard, attachment, dont_parse_links)
+        result = await self.request("messages.send", {"peer_ids": str(peer_id), **parameters})
+        return _message_send_result(result, peer_id)
 
     async def edit_message(
         self,
@@ -338,6 +398,36 @@ class Bot:
             },
         )
         return _integer(result)
+
+    async def forward_message_and_get_ids(
+        self,
+        peer_id: int,
+        *,
+        from_peer_id: int,
+        conversation_message_id: int,
+        random_id: Optional[int] = None,
+    ) -> MessageSendResult:
+        """Forward one source peer's message and return the new message's IDs.
+
+        conversation_message_id belongs to from_peer_id, not the destination.
+        Recipient errors and response validation follow send_message_and_get_ids.
+        """
+        _peer_identifier(peer_id)
+        _peer_identifier(from_peer_id)
+        _message_identifier(None, conversation_message_id)
+        forward = {
+            "peer_id": from_peer_id,
+            "conversation_message_ids": [conversation_message_id],
+        }
+        result = await self.request(
+            "messages.send",
+            {
+                "peer_ids": str(peer_id),
+                "random_id": _random_id(random_id),
+                "forward": json.dumps(forward),
+            },
+        )
+        return _message_send_result(result, peer_id)
 
     async def send_message_event_answer(
         self,

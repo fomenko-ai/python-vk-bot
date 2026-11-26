@@ -4,6 +4,15 @@ All notable changes will be documented here, following Keep a Changelog.
 
 ## Unreleased
 
+## 0.8.0 - 2026-11-26
+
+### Added
+
+- `Bot.send_message_and_get_ids` and `Bot.forward_message_and_get_ids` return a
+  typed `MessageSendResult` with recipient and conversation-scoped message IDs.
+  An unavailable global message ID is represented by `None`. See the
+  [send, edit and forwarding examples](README.md#send-edit-and-forward-using-conversation-ids).
+
 ## 0.7.0 - 2026-11-16
 
 ### Added

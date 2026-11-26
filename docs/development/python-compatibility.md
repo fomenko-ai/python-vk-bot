@@ -10,6 +10,11 @@ The library installs, imports and passes all 474 regression tests on the checked
 Callback extra were also checked in clean Python 3.9 consumer environments.
 See [exact results and reproduction commands](verification.md).
 
+Current installation, runtime choices and verification commands come first.
+Transfer records and source reviews follow from newest to oldest; dates retain
+the scope of their original checks. Undated media history precedes the baseline
+source review and does not imply a fresh verification.
+
 ## Installation
 
 The branch must be pushed before another machine can install it from Git. These commands
@@ -40,14 +45,6 @@ contributor environments, not a constraint imposed on downstream users. For repr
 Git installations, select a reviewed commit or release tag and lock the consumer project.
 Installing the branch and main into the same environment does not provide two independent
 libraries: they have the same distribution and import names.
-
-## Media transfer
-
-Media API, keyboard and map examples are transferred from main commit
-`f3b906b66b2192e5a1e42431f191e6a98e04ed36`. Runtime aliases and model annotations
-use Python 3.9-compatible typing, and the map state is a regular dataclass.
-New concurrency tests use portable timeout and owned-task helpers. Branch-specific
-dependencies, Python targets and lifecycle safeguards are retained.
 
 ## Runtime choices
 
@@ -119,20 +116,22 @@ an alpha library; compatibility work does not add a stable-API guarantee. Exact 
 JSON Schema layout and runtime typing implementation objects are not stability guarantees.
 VK API version, methods, payloads and delivery policies are not changed by this work.
 
-## References verified on 2026-11-01
+## Detailed send result transfer (2026-11-26)
 
-- [pydantic-settings 2.11.0](https://pypi.org/project/pydantic-settings/2.11.0/)
-  declares Python >=3.9; [2.12.0](https://pypi.org/project/pydantic-settings/2.12.0/)
-  declares Python >=3.10.
-- [async-timeout 5.0.1](https://pypi.org/project/async-timeout/5.0.1/) documents
-  conditional imports and its status as an upstreamed, deprecated backport.
-- [Python 3.11 asyncio](https://docs.python.org/3.11/library/asyncio-task.html)
-  documents timeout, cancellation and task waiting.
-- [Python 3.9 release schedule](https://peps.python.org/pep-0596/) records upstream
-  end of life on 2025-10-31.
-- [pip Git sources](https://pip.pypa.io/en/stable/topics/vcs-support/) and
-  [uv dependency sources](https://docs.astral.sh/uv/concepts/projects/dependencies/)
-  document branch, tag and revision installation.
+The production portion of main commit c9b7f13 adds MessageSendResult and the
+send_message_and_get_ids / forward_message_and_get_ids methods. Evaluated
+Pydantic annotations use Optional; Bot signatures use Optional/Union. No
+new dependencies or transport/lifecycle changes are required. Existing 474
+tests pass on Python 3.9–3.14; transfer of the 110 new source regression cases
+awaits production-code approval. See [verification](verification.md).
+
+## Native buttons and HTTP delay metadata transfer (2026-11-06)
+
+Source `ad23faf6641b50f761c8b2c0dd8b1d25da3c4e60` adds OpenLinkButton,
+LocationButton, ShowSnackbar and HTTPError.retry_after. Runtime annotations use
+Union/Optional/TypeAlias; HTTP dates use timezone.utc and portable exception syntax.
+All 439 tests and syntax checks pass on Python 3.9–3.14. By explicit user request, version 0.6.0 and release date 2026-11-06 match main.
+Branch-specific dependencies and enum fallbacks are preserved. See [verification](verification.md).
 
 ## Unified event transfer (2026-11-03)
 
@@ -155,10 +154,25 @@ run so suspended cleanup is not interrupted a second time. Both operation orders
 repeated runner cancellation have regression coverage. See the dated verification log
 for current results and the historical record for the preceding release.
 
-## Native buttons and HTTP delay metadata transfer (2026-11-06)
+## Media transfer
 
-Source `ad23faf6641b50f761c8b2c0dd8b1d25da3c4e60` adds OpenLinkButton,
-LocationButton, ShowSnackbar and HTTPError.retry_after. Runtime annotations use
-Union/Optional/TypeAlias; HTTP dates use timezone.utc and portable exception syntax.
-All 439 tests and syntax checks pass on Python 3.9–3.14. By explicit user request, version 0.6.0 and release date 2026-11-06 match main.
-Branch-specific dependencies and enum fallbacks are preserved. See [verification](verification.md).
+Media API, keyboard and map examples are transferred from main commit
+`f3b906b66b2192e5a1e42431f191e6a98e04ed36`. Runtime aliases and model annotations
+use Python 3.9-compatible typing, and the map state is a regular dataclass.
+New concurrency tests use portable timeout and owned-task helpers. Branch-specific
+dependencies, Python targets and lifecycle safeguards are retained.
+
+## References verified on 2026-11-01
+
+- [pydantic-settings 2.11.0](https://pypi.org/project/pydantic-settings/2.11.0/)
+  declares Python >=3.9; [2.12.0](https://pypi.org/project/pydantic-settings/2.12.0/)
+  declares Python >=3.10.
+- [async-timeout 5.0.1](https://pypi.org/project/async-timeout/5.0.1/) documents
+  conditional imports and its status as an upstreamed, deprecated backport.
+- [Python 3.11 asyncio](https://docs.python.org/3.11/library/asyncio-task.html)
+  documents timeout, cancellation and task waiting.
+- [Python 3.9 release schedule](https://peps.python.org/pep-0596/) records upstream
+  end of life on 2025-10-31.
+- [pip Git sources](https://pip.pypa.io/en/stable/topics/vcs-support/) and
+  [uv dependency sources](https://docs.astral.sh/uv/concepts/projects/dependencies/)
+  document branch, tag and revision installation.
