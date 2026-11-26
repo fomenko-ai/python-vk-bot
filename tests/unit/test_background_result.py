@@ -1,6 +1,6 @@
 import asyncio
 
-import httpx
+import httpx2
 import pytest
 
 from examples import background_result
@@ -43,17 +43,17 @@ async def test_background_example_main_with_mocked_polling(monkeypatch: pytest.M
     waiting, cleaned = asyncio.Event(), asyncio.Event()
     polls = 0
 
-    async def respond(request: httpx.Request) -> httpx.Response:
+    async def respond(request: httpx2.Request) -> httpx2.Response:
         nonlocal polls
         if request.url.path == "/method/groups.getLongPollServer":
-            return httpx.Response(200, json=connection())
+            return httpx2.Response(200, json=connection())
         if request.url.path == "/method/messages.send":
             sent.append(form(request)["message"])
-            return httpx.Response(200, json={"response": len(sent)})
+            return httpx2.Response(200, json={"response": len(sent)})
         assert request.url.host == "poll.example"
         polls += 1
         if polls == 1:
-            return httpx.Response(
+            return httpx2.Response(
                 200, json={"ts": "11", "updates": [event(text="/background abc")]}
             )
         waiting.set()
@@ -76,7 +76,7 @@ async def test_background_example_main_with_mocked_polling(monkeypatch: pytest.M
     before = asyncio.all_tasks()
     async with (
         asyncio.timeout(2),
-        httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client,
+        httpx2.AsyncClient(transport=httpx2.MockTransport(respond)) as client,
     ):
 
         def factory(*args: object, **kwargs: object) -> Bot:

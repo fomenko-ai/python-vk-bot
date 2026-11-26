@@ -4,6 +4,9 @@ Status: accepted
 Date: 2026-11-01
 Task: media-api
 
+The HTTP client choice is amended by [decision 0005](0005-httpx2-transport.md);
+the component responsibilities and ownership decisions remain in force.
+
 ## Context
 
 The approved media plan needs upload/save operations and replacement of a message's

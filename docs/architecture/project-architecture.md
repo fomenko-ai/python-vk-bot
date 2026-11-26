@@ -21,7 +21,7 @@ python_vk_bot/
   settings.py        public, extensible environment-backed BotSettings
   _config.py         shared constraints/defaults and explicit TransportConfig
   bot.py            typed VK method wrappers and raw request escape hatch
-  transport.py      reusable HTTPX client, serialization and API envelope handling
+  transport.py      reusable HTTPX2 client, serialization and API envelope handling
   errors.py         safe, structured error categories
   models/
     base.py         extra-field retention policy
@@ -59,13 +59,13 @@ flowchart LR
 
 ## Lifecycle and ownership
 
-Bot is an async context manager. An internally created HTTPX client is reused and closed
+Bot is an async context manager. An internally created HTTPX2 client is reused and closed
 on shutdown; an injected client remains caller-owned. Requests require initialization.
 Default Authorization headers and credential query parameters on injected clients are
 rejected to avoid leaking them to Long Poll. API authorization is attached per request.
 Redirects are not followed. Network and validation exception text excludes payloads/URLs.
-An HTTPX logging filter removes URL query strings from HTTPX's standard request log
-records, including unrelated HTTPX query strings in the same process. This prevents
+An HTTPX2 logging filter removes URL query strings from HTTPX2's standard request log
+records, including unrelated HTTPX2 query strings in the same process. This prevents
 Long Poll keys appearing in INFO logs. Custom transports/hooks must follow the same policy.
 
 Application.initialize initializes Bot and invokes post_init. start starts the consumer
@@ -188,13 +188,14 @@ It validates the VK text limit while raw mappings remain available. HTTPTranspor
 parses Retry-After for non-success HTTP responses into HTTPError.retry_after; it
 does not schedule retries. The polling loop owns its separate recovery policy.
 
-HTTPX AsyncClient provides async pooling, explicit timeouts, injectable transports and
+HTTPX2 AsyncClient provides async pooling, explicit timeouts, injectable transports and
 MockTransport for network-free regression tests. aiohttp ClientSession also supports these
-core needs, but no existing requirement justified a different client API or mandatory
+core needs. HTTPX2 retains the existing request interface and transport architecture;
+see the [migration contract](../development/httpx2-migration.md). There is no mandatory
 HTTP server dependency. Callback server dependencies are optional.
 
-References: [HTTPX async](https://www.python-httpx.org/async/),
-[HTTPX transports](https://www.python-httpx.org/advanced/transports/),
+References: [HTTPX2 async](https://pydantic.dev/docs/httpx2/guides/async/),
+[HTTPX2 transports](https://pydantic.dev/docs/httpx2/advanced/transports/),
 [aiohttp sessions](https://docs.aiohttp.org/en/stable/client_quickstart.html),
 [Pydantic models](https://docs.pydantic.dev/latest/concepts/models/).
 

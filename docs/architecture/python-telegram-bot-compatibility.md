@@ -26,6 +26,27 @@ Poll and Callback feed the same validated update/dispatch pipeline but have diff
 acknowledgement and resource semantics. No Telegram transport, permission, keyboard,
 or message identifier assumptions are copied. No PTB implementation code is copied.
 
+## HTTPX2 transport
+
+Reviewed on **2026-11-26** against stable **PTB 22.8**, identified by its
+[stable documentation](https://docs.python-telegram-bot.org/en/stable/).
+PTB's [tagged dependencies](https://github.com/python-telegram-bot/python-telegram-bot/blob/v22.8/pyproject.toml)
+still specify HTTPX; [issue 5258](https://github.com/python-telegram-bot/python-telegram-bot/issues/5258)
+remains open. This review does not claim PTB has migrated to HTTPX2.
+
+Main uses HTTPX2 as a deliberate implementation difference. Bot handles VK methods,
+HTTPTransport owns or borrows one reusable async client, Application owns application
+lifecycle, and LongPoll owns polling recovery. These responsibilities remain aligned
+with the principles behind PTB's
+[HTTPXRequest](https://docs.python-telegram-bot.org/en/v22.8/telegram.request.httpxrequest.html),
+without copying its implementation or adding a request abstraction. Dependency
+identity is not architectural compatibility. VK query keys, upload stages and
+per-request community authorization remain VK-specific.
+
+Client injection requires HTTPX2 types. See the
+[migration contract and security details](../development/httpx2-migration.md) and
+[decision 0005](../decisions/0005-httpx2-transport.md).
+
 ## Message send results
 
 ### Message lookup validation

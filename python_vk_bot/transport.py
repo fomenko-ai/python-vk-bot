@@ -13,7 +13,7 @@ from types import TracebackType
 from typing import BinaryIO, Literal, Self, cast
 from urllib.parse import urlsplit
 
-import httpx
+import httpx2
 from pydantic import JsonValue, SecretStr, ValidationError
 
 from ._config import TransportConfig
@@ -91,13 +91,13 @@ def _read_upload(source: Path | BinaryIO) -> bytes:
 
 
 class _RedactQuery(logging.Filter):
-    """HTTPX INFO logs otherwise expose the Long Poll key in request URLs."""
+    """HTTPX2 INFO logs otherwise expose the Long Poll key in request URLs."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         if isinstance(record.args, tuple):
             record.args = tuple(
                 value.copy_with(query=None)
-                if isinstance(value, httpx.URL) and value.query
+                if isinstance(value, httpx2.URL) and value.query
                 else value
                 for value in record.args
             )
@@ -107,20 +107,24 @@ class _RedactQuery(logging.Filter):
 class HTTPTransport:
     """Own a client or borrow an injected client without closing it."""
 
-    def __init__(self, config: TransportConfig, *, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self, config: TransportConfig, *, client: httpx2.AsyncClient | None = None
+    ) -> None:
+        if client is not None and not isinstance(client, httpx2.AsyncClient):
+            raise TypeError("client must be an httpx2.AsyncClient")
         self.config = config
         self._client = client
         self._owns_client = client is None
         self._started = False
-        httpx_logger = logging.getLogger("httpx")
-        if not any(isinstance(item, _RedactQuery) for item in httpx_logger.filters):
-            httpx_logger.addFilter(_RedactQuery())
+        httpx2_logger = logging.getLogger("httpx2")
+        if not any(isinstance(item, _RedactQuery) for item in httpx2_logger.filters):
+            httpx2_logger.addFilter(_RedactQuery())
 
     async def initialize(self) -> None:
         if self._started:
             return
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=self.config.timeout)
+            self._client = httpx2.AsyncClient(timeout=self.config.timeout)
         if self._client.is_closed:
             raise LifecycleError("The injected HTTP client is closed")
         if "authorization" in self._client.headers:
@@ -172,7 +176,7 @@ class HTTPTransport:
                 follow_redirects=False,
                 auth=None,
             )
-        except httpx.RequestError:
+        except httpx2.RequestError:
             raise NetworkError("VK HTTP request could not complete") from None
         if not response.is_success:
             raise HTTPError(
@@ -234,11 +238,11 @@ class HTTPTransport:
         if "content-type" in self._client.headers:
             raise ValueError("Upload clients must not define a default Content-Type header")
         try:
-            # HTTPX percent-encodes an unmatched '[' in a host; reject malformed
+            # HTTPX2 percent-encodes an unmatched '[' in a host; reject malformed
             # bracketed hosts before that normalization can turn them into a request.
             urlsplit(server)
-            url = httpx.URL(server)
-        except httpx.InvalidURL, ValueError:
+            url = httpx2.URL(server)
+        except httpx2.InvalidURL, ValueError:
             raise InvalidResponseError("Invalid upload server URL") from None
         if url.scheme != "https" or not url.host or url.userinfo or url.fragment:
             raise InvalidResponseError("Unexpected upload server URL")
@@ -279,7 +283,11 @@ class HTTPTransport:
         return payload
 
     async def poll(self, server: str, *, key: SecretStr, ts: str, wait: int) -> JsonValue:
-        url = httpx.URL(server)
+        try:
+            urlsplit(server)
+            url = httpx2.URL(server)
+        except httpx2.InvalidURL, ValueError:
+            raise InvalidResponseError("Invalid Long Poll server URL") from None
         if url.scheme != "https" or not url.host or url.userinfo or url.query or url.fragment:
             raise InvalidResponseError("Unexpected Long Poll server URL")
         # The community token is only sent to api.vk.ru, never to the polling server.

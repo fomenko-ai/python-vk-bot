@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import AsyncIterator
 
-import httpx
+import httpx2
 import pytest
 from pydantic import JsonValue
 
@@ -36,12 +36,12 @@ def callback(application: Application) -> Callback:
 
 
 @pytest.fixture
-async def receiver(callback: Callback) -> AsyncIterator[httpx.AsyncClient]:
+async def receiver(callback: Callback) -> AsyncIterator[httpx2.AsyncClient]:
     app = callback.create_app()
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
     ):
         yield client
@@ -63,7 +63,7 @@ async def test_confirmation_authentication(
         await callback.handle(payload)
 
 
-async def test_http_confirmation_and_plain_text_ack(receiver: httpx.AsyncClient) -> None:
+async def test_http_confirmation_and_plain_text_ack(receiver: httpx2.AsyncClient) -> None:
     response = await receiver.post(
         "/callback",
         json={"type": "confirmation", "group_id": 42, "secret": "synthetic-callback-secret"},
@@ -86,7 +86,7 @@ async def test_http_confirmation_and_plain_text_ack(receiver: httpx.AsyncClient)
         (b'{"group_id":42,"secret":"synthetic-callback-secret"}', 400),
     ],
 )
-async def test_http_bad_inputs(receiver: httpx.AsyncClient, body: bytes, status: int) -> None:
+async def test_http_bad_inputs(receiver: httpx2.AsyncClient, body: bytes, status: int) -> None:
     response = await receiver.post("/callback", content=body)
     assert response.status_code == status
     assert "synthetic-callback-secret" not in response.text
@@ -108,8 +108,8 @@ async def test_failed_handler_returns_error_then_retry_succeeds(
     app = callback.create_app()
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
     ):
         first = await client.post("/callback", json=authenticated_event())
@@ -139,8 +139,8 @@ async def test_concurrent_duplicate_is_acknowledged_after_first(
     app = callback.create_app()
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
         asyncio.timeout(2),
         asyncio.TaskGroup() as tasks,
@@ -164,8 +164,8 @@ async def test_body_limit_applies_to_streamed_requests(callback: Callback) -> No
     app = callback.create_app(max_body_bytes=10)
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
     ):
         response = await client.post("/callback", content=chunks())
@@ -185,8 +185,8 @@ async def test_overload_rejected_and_capacity_released(
     app = callback.create_app(max_pending=1)
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
         asyncio.timeout(2),
         asyncio.TaskGroup() as tasks,
@@ -220,8 +220,8 @@ async def test_request_timeout_cancels_handler_and_releases_capacity(
     app = callback.create_app(max_pending=1, request_timeout=0.02)
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
         asyncio.timeout(2),
     ):
@@ -235,8 +235,8 @@ async def test_request_timeout_cancels_handler_and_releases_capacity(
 
 async def test_missing_lifespan_does_not_process_events(callback: Callback) -> None:
     app = callback.create_app()
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+    async with httpx2.AsyncClient(
+        transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
     ) as client:
         response = await client.post("/callback", json=authenticated_event())
     assert response.status_code == 503
@@ -269,8 +269,8 @@ async def test_http_timeout_while_queued_or_waiting_for_capacity_is_retryable(
     async with (
         asyncio.timeout(2),
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
     ):
         await application.update_queue.put("gate")
@@ -324,8 +324,8 @@ async def test_http_handler_stop_acknowledges_and_deduplicates(
     app = callback.create_app()
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
     ):
         for event_id in ("first", "first", "second"):
@@ -376,8 +376,8 @@ async def test_asgi_lifespan_drains_results_before_post_stop(bot: Bot, api: Mock
     async with (
         asyncio.timeout(2),
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as client,
     ):
         try:

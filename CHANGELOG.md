@@ -4,6 +4,15 @@ All notable changes will be documented here, following Keep a Changelog.
 
 ## Unreleased
 
+## 0.9.0 - 2026-11-26
+
+### Changed
+
+- **Breaking:** use HTTPX2 instead of HTTPX. Injected clients and custom transports
+  must use HTTPX2 types. TLS uses the operating system trust store by default;
+  request logging uses `httpx2` and `httpcore2.*`. See the
+  [migration guide](docs/development/httpx2-migration.md).
+
 ## 0.8.1 - 2026-11-26
 
 ### Fixed

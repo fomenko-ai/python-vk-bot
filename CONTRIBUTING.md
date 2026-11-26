@@ -12,7 +12,7 @@ uv build
 ```
 
 The optional Callback extra is installed for type checking and receiver tests.
-HTTPX MockTransport replaces live HTTP; pytest-asyncio and pytest-cov are development
+HTTPX2 MockTransport replaces live HTTP; pytest-asyncio and pytest-cov are development
 dependencies. Do not generate persistent coverage artifacts by default.
 
 ## Test approval and current state

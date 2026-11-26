@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 
-import httpx
+import httpx2
 import pytest
 from pydantic import JsonValue, SecretStr
 
@@ -21,7 +21,7 @@ from .helpers import MockAPI, form, message
 
 @pytest.mark.parametrize("setting", ["authorization", "access_token", "key", "secret", "closed"])
 async def test_rejects_unsafe_or_closed_injected_client(
-    client: httpx.AsyncClient, setting: str
+    client: httpx2.AsyncClient, setting: str
 ) -> None:
     if setting == "authorization":
         client.headers[setting] = "Bearer placeholder"
@@ -37,7 +37,7 @@ async def test_rejects_unsafe_or_closed_injected_client(
 
 
 async def test_send_serialization_and_borrowed_client(
-    bot: Bot, api: MockAPI, client: httpx.AsyncClient
+    bot: Bot, api: MockAPI, client: httpx2.AsyncClient
 ) -> None:
     api.add({"response": 99})
     keyboard = Keyboard(buttons=[])
@@ -195,7 +195,7 @@ async def test_http_errors_are_not_followed_or_retried(bot: Bot, api: MockAPI, s
 
 
 async def test_network_error_does_not_retry_a_send(bot: Bot, api: MockAPI) -> None:
-    api.responses.append(httpx.ReadTimeout("sensitive URL or payload"))
+    api.responses.append(httpx2.ReadTimeout("sensitive URL or payload"))
     async with bot:
         with pytest.raises(NetworkError, match="could not complete") as captured:
             await bot.send_message(1, "hello")
@@ -214,7 +214,7 @@ async def test_invalid_responses(bot: Bot, api: MockAPI, payload: JsonValue) -> 
 
 
 async def test_invalid_json(bot: Bot, api: MockAPI) -> None:
-    api.responses.append(httpx.Response(200, content=b"not JSON"))
+    api.responses.append(httpx2.Response(200, content=b"not JSON"))
     async with bot:
         with pytest.raises(InvalidResponseError, match="invalid JSON"):
             await bot.get_user_info(7)
@@ -240,7 +240,7 @@ async def test_poll_does_not_send_token_and_redacts_logs(
     bot: Bot, api: MockAPI, caplog: pytest.LogCaptureFixture
 ) -> None:
     api.add({"ts": "11", "updates": []})
-    with caplog.at_level(logging.INFO, logger="httpx"):
+    with caplog.at_level(logging.INFO, logger="httpx2"):
         async with bot:
             await bot.transport.poll(
                 "https://poll.example/events", key=SecretStr("synthetic-poll-key"), ts="10", wait=90
@@ -272,16 +272,16 @@ async def test_request_cancellation_propagates() -> None:
     entered = asyncio.Event()
     released = asyncio.Event()
 
-    async def pending(request: httpx.Request) -> httpx.Response:
+    async def pending(request: httpx2.Request) -> httpx2.Response:
         entered.set()
         try:
             await asyncio.Event().wait()
         finally:
             released.set()
-        return httpx.Response(200, json={"response": 1})
+        return httpx2.Response(200, json={"response": 1})
 
     async with (
-        httpx.AsyncClient(transport=httpx.MockTransport(pending)) as client,
+        httpx2.AsyncClient(transport=httpx2.MockTransport(pending)) as client,
         Bot("placeholder", client=client) as bot,
         asyncio.timeout(2),
     ):

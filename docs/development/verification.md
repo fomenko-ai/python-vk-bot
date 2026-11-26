@@ -1,5 +1,94 @@
 # Verification
 
+## HTTPX2 migration, version 0.9.0 (2026-11-26)
+
+The user approved the architecture, then the implemented production changes before
+test edits. Main uses HTTPX2 >=2.16.2,<3, resolved to 2.16.2 with httpcore2 2.16.2.
+Python >=3.14 remains unchanged. The user subsequently authorized version
+**0.9.0** and changelog date **2026-11-26**; this records release preparation,
+not publication. After the metadata update, locked all-extras sync, Ruff lint/format,
+full ty, all 684 tests on Python 3.14.4 and the 0.9.0 wheel/sdist build passed.
+The interpreter matrix was not repeated for this metadata-only update.
+
+Migrated 13 existing test files (fixtures/helpers included) to canonical HTTPX2
+imports and logger names without weakening assertions. Added 28 cases in
+`tests/unit/test_httpx2_migration.py`: foreign injected-client rejection, owned-client
+recreation, borrowed-client reuse/closure, connect/read/write/pool timeouts and other
+network errors, sanitized malformed URLs, redirects with caller-enabled redirect
+following, query/token/body secrecy in standard logs, suppressed exception context in
+formatted tracebacks, and per-request timeout precedence.
+
+The first new-test run included literal test secrets in the calling source lines
+rendered by traceback formatting. Tests now pass those values through variables so
+they check runtime leakage rather than deliberately embedded source text. No production
+behavior or existing assertion was weakened to make tests pass.
+
+Verified first on CPython **3.14.4**, with Callback dependencies installed:
+
+| Check | Result |
+| --- | --- |
+| `uv lock` | Passed |
+| `uv sync` | Passed |
+| `uv sync --locked --all-extras` | Passed |
+| `uv run ruff check .` | Passed |
+| `uv run ruff format --check .` | Passed, 82 files |
+| `uv run ty check` | Passed, production and tests |
+| `uv run pytest --strict-markers` | Passed, 684 tests |
+| `uv build --out-dir /tmp/python-vk-bot-httpx2-build` | Passed, wheel and sdist |
+| `git diff --check` | Passed |
+| Old `httpx`/`httpcore` imports and lock entries | Absent from production, tests and lock |
+
+The initial full ty/pytest attempts before test approval failed on old test imports;
+the final migrated suite and type check above passed.
+
+Both existing Python compatibility scripts ran over all installed CPython >=3.14.
+Syntax passed for all 23 production sources on every interpreter below. Runtime
+checks used isolated, locked dependencies, all extras and strict pytest markers:
+
+| CPython | Runtime result |
+| --- | --- |
+| 3.14.4 | 684 passed |
+| 3.15.0b2 | 684 passed |
+| 3.15.0 | 684 passed |
+| 3.15.1 | 684 passed |
+| 3.15.2 | 684 passed |
+| 3.16.0a1 | 684 fixture setup errors; test bodies did not run |
+
+The matrix command exits nonzero because pytest-asyncio 1.4.1 calls the removed
+`asyncio.get_event_loop_policy` on 3.16.0a1. This is the previously recorded test-stack
+limitation, not a confirmed HTTPX2 regression; 3.16 runtime support remains unverified.
+No workaround, dependency update or weakened test was introduced for that preview.
+
+No live VK calls, real proxy exchanges, TLS handshakes or HTTP/2 exchanges were run.
+Mock transports verify library request/error/ownership semantics; upstream TLS/proxy
+behavior was reviewed in source/docs. Custom CA/proxy deployments need environment
+verification. Unit fixtures continue to prohibit socket connections and DNS.
+
+`compat/py39` was inspected read-only: it retains Python >=3.9 and HTTPX >=0.28,<1.
+The approved branch strategy requires no HTTPX2 dependency or import change there.
+No commit or branch transfer was made. After an authorized main commit, use the sync
+skill to transfer the sanitized Long Poll URL fix and applicable regressions with
+HTTPX imports, Python 3.9 syntax and branch-native docs/metadata; omit main-only
+HTTPX2 dependency, type-identity, TLS-default and logger changes. Legacy runtime tests
+were not rerun in this task. See the [migration guide](httpx2-migration.md).
+
+Changed files:
+
+- Production/packaging: `python_vk_bot/bot.py`, `python_vk_bot/transport.py`,
+  `pyproject.toml`, `uv.lock`.
+- Root guidance: `AGENTS.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `README.md`.
+- Architecture: `docs/architecture/project-architecture.md`,
+  `docs/architecture/python-telegram-bot-compatibility.md`,
+  `docs/decisions/0001-async-framework.md`, `docs/decisions/0002-media-attachments.md`,
+  `docs/decisions/0005-httpx2-transport.md`.
+- Development docs: `docs/development/media-api.md`,
+  `docs/development/httpx2-migration.md`, `docs/development/verification.md`.
+- Tests under `tests/unit/`: `conftest.py`, `helpers.py`, `test_application.py`,
+  `test_background_result.py`, `test_bot_transport.py`, `test_callback.py`,
+  `test_donut.py`, `test_interactive_map.py`, `test_long_poll.py`,
+  `test_media_uploads.py`, `test_message_lookup.py`, `test_message_send_ids.py`,
+  `test_retry_after.py`, `test_httpx2_migration.py`.
+
 ## Message identifiers, version 0.8.0 (2026-11-26)
 
 After approval of the production implementation, added 110 HTTP-mock regression

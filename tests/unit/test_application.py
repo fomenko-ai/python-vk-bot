@@ -1,6 +1,6 @@
 import asyncio
 
-import httpx
+import httpx2
 import pytest
 
 from python_vk_bot import (
@@ -255,18 +255,18 @@ async def test_polling_continues_after_handler_error_and_stops_from_handler(
 async def test_polling_shutdown_interrupts_http(cancel_runner: bool) -> None:
     entered, cleaned = asyncio.Event(), asyncio.Event()
 
-    async def pending(request: httpx.Request) -> httpx.Response:
+    async def pending(request: httpx2.Request) -> httpx2.Response:
         if request.url.host == "api.vk.ru":
-            return httpx.Response(200, json=connection())
+            return httpx2.Response(200, json=connection())
         entered.set()
         try:
             await asyncio.Event().wait()
         finally:
             cleaned.set()
-        return httpx.Response(200, json={"ts": "11", "updates": []})
+        return httpx2.Response(200, json={"ts": "11", "updates": []})
 
     async with (
-        httpx.AsyncClient(transport=httpx.MockTransport(pending)) as client,
+        httpx2.AsyncClient(transport=httpx2.MockTransport(pending)) as client,
         asyncio.timeout(2),
     ):
         application = Application(Bot("placeholder", client=client), 42)
@@ -303,14 +303,14 @@ async def test_polling_auth_error_reported_with_no_update(
 
 @pytest.mark.parametrize("failure", [None, ValueError, asyncio.CancelledError])
 async def test_owned_client_closed_on_normal_and_failed_startup(
-    client: httpx.AsyncClient,
+    client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
     failure: type[BaseException] | None,
 ) -> None:
-    def factory(**kwargs: object) -> httpx.AsyncClient:
+    def factory(**kwargs: object) -> httpx2.AsyncClient:
         return client
 
-    monkeypatch.setattr("python_vk_bot.transport.httpx.AsyncClient", factory)
+    monkeypatch.setattr("python_vk_bot.transport.httpx2.AsyncClient", factory)
     hooks: list[str] = []
 
     async def startup(application: Application) -> None:
@@ -391,15 +391,15 @@ async def test_post_stop_order_and_bot_availability(bot: Bot, api: MockAPI, mode
 
 @pytest.mark.parametrize("failure", [ValueError, asyncio.CancelledError])
 async def test_failed_post_stop_still_closes_owned_bot_and_runs_post_shutdown_once(
-    client: httpx.AsyncClient,
+    client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
     failure: type[BaseException],
 ) -> None:
-    def factory(**kwargs: object) -> httpx.AsyncClient:
+    def factory(**kwargs: object) -> httpx2.AsyncClient:
         return client
 
-    monkeypatch.setattr("python_vk_bot.transport.httpx.AsyncClient", factory)
+    monkeypatch.setattr("python_vk_bot.transport.httpx2.AsyncClient", factory)
     calls: list[str] = []
 
     async def stopped(application: Application) -> None:
@@ -633,9 +633,9 @@ async def test_repeated_event_cancellation_waits_for_handler_cleanup(
 async def test_stop_and_runner_cancellation_share_polling_cleanup(stop_first: bool) -> None:
     entered, cleaning, release, cleaned = (asyncio.Event() for _ in range(4))
 
-    async def pending(request: httpx.Request) -> httpx.Response:
+    async def pending(request: httpx2.Request) -> httpx2.Response:
         if request.url.host == "api.vk.ru":
-            return httpx.Response(200, json=connection())
+            return httpx2.Response(200, json=connection())
         entered.set()
         try:
             await asyncio.Event().wait()
@@ -643,11 +643,11 @@ async def test_stop_and_runner_cancellation_share_polling_cleanup(stop_first: bo
             cleaning.set()
             await release.wait()
             cleaned.set()
-        return httpx.Response(200, json={"ts": "11", "updates": []})
+        return httpx2.Response(200, json={"ts": "11", "updates": []})
 
     before = asyncio.all_tasks()
     async with (
-        httpx.AsyncClient(transport=httpx.MockTransport(pending)) as client,
+        httpx2.AsyncClient(transport=httpx2.MockTransport(pending)) as client,
         asyncio.timeout(2),
     ):
         application = Application(Bot("placeholder", client=client), 42)

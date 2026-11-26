@@ -4,6 +4,9 @@ Status: accepted
 Date: 2026-10-31
 Task: modernize-framework
 
+The HTTP client choice is amended by [decision 0005](0005-httpx2-transport.md);
+the component responsibilities and ownership decisions remain in force.
+
 ## Context
 
 This new library needs asynchronous HTTP, VK method wrappers, event delivery, dispatch,

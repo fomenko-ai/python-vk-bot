@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import aclosing
 
-import httpx
+import httpx2
 import pytest
 from pydantic import JsonValue
 
@@ -83,7 +83,7 @@ async def test_transient_failures_back_off_and_recover(
 
     monkeypatch.setattr("python_vk_bot.long_poll.asyncio.sleep", sleep)
     api.add(connection())
-    api.responses.append(httpx.ReadTimeout("synthetic timeout"))
+    api.responses.append(httpx2.ReadTimeout("synthetic timeout"))
     api.add({}, status=503)
     api.add({}, status=429)
     api.add({"ts": "11", "updates": [event()]})
@@ -153,7 +153,7 @@ async def test_cancellation_during_backoff(
         await asyncio.Event().wait()
 
     monkeypatch.setattr("python_vk_bot.long_poll.asyncio.sleep", sleep)
-    api.responses.append(httpx.ConnectError("synthetic failure"))
+    api.responses.append(httpx2.ConnectError("synthetic failure"))
     async with bot, aclosing(LongPoll(bot, 42).listen()) as updates, asyncio.timeout(2):
         task = asyncio.create_task(anext(updates))
         await sleeping.wait()

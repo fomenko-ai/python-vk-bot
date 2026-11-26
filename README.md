@@ -162,7 +162,9 @@ async with Bot(token) as bot:
     user = await bot.get_user_info(user_id)
 ```
 
-An injected `httpx.AsyncClient` remains caller-owned. Methods cover uploading, sending,
+An injected `httpx2.AsyncClient` remains caller-owned. See the
+[HTTPX2 migration guide](docs/development/httpx2-migration.md) for client injection,
+TLS, proxy and logging configuration. Methods cover uploading, sending,
 editing, deleting, forwarding, fetching a message/user, answering message events, and obtaining Long Poll
 connection data. `Bot.request(method, parameters)` exposes raw JSON results for additional
 VK methods; nested request parameters must be JSON encoded explicitly.

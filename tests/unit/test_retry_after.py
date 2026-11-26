@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
-import httpx
+import httpx2
 import pytest
 from pydantic import SecretStr
 
@@ -57,7 +57,7 @@ async def test_retry_after_is_read_from_error_response(
     bot: Bot, api: MockAPI, header: str | None, expected: float | None
 ) -> None:
     headers = {"rEtRy-AfTeR": header} if header is not None else {}
-    api.responses.append(httpx.Response(429, headers=headers, content=b"not JSON"))
+    api.responses.append(httpx2.Response(429, headers=headers, content=b"not JSON"))
     async with bot:
         with pytest.raises(HTTPError) as captured:
             await bot.send_message(7, "private message", random_id=11)
@@ -76,7 +76,7 @@ async def test_shared_transport_exposes_delay_without_retry_or_sleep(
     sleep = AsyncMock(side_effect=AssertionError("Transport must not wait"))
     monkeypatch.setattr("asyncio.sleep", sleep)
     api.responses.append(
-        httpx.Response(
+        httpx2.Response(
             503,
             headers={"Retry-After": "42", "X-Private": "private-header"},
             content=b"private-response",
@@ -109,7 +109,7 @@ async def test_shared_transport_exposes_delay_without_retry_or_sleep(
 
 async def test_vk_error_six_is_not_an_http_rate_limit(bot: Bot, api: MockAPI) -> None:
     api.responses.append(
-        httpx.Response(
+        httpx2.Response(
             200,
             headers={"Retry-After": "42"},
             json={"error": {"error_code": 6, "error_msg": "Too many requests"}},
@@ -142,7 +142,7 @@ def test_http_error_constructor_remains_compatible() -> None:
 async def test_obsolete_date_year_uses_fifty_year_rule(
     bot: Bot, api: MockAPI, header: str, deadline: datetime
 ) -> None:
-    api.responses.append(httpx.Response(503, headers={"Retry-After": header}))
+    api.responses.append(httpx2.Response(503, headers={"Retry-After": header}))
     async with bot:
         with pytest.raises(HTTPError) as captured:
             await bot.send_message(7, "message", random_id=11)

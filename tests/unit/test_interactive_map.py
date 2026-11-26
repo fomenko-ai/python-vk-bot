@@ -3,7 +3,7 @@ import json
 import struct
 import zlib
 
-import httpx
+import httpx2
 import pytest
 from pydantic import JsonValue
 
@@ -97,7 +97,7 @@ async def test_concurrent_navigation_serializes_render_upload_and_edit() -> None
     saved = 0
     edits: list[dict[str, str]] = []
 
-    async def respond(request: httpx.Request) -> httpx.Response:
+    async def respond(request: httpx2.Request) -> httpx2.Response:
         nonlocal uploads, saved
         path = request.url.path
         if path == "/method/messages.sendMessageEventAnswer":
@@ -120,10 +120,10 @@ async def test_concurrent_navigation_serializes_render_upload_and_edit() -> None
             payload = {"response": 1}
         else:
             raise AssertionError("Unexpected request, including fallback sends")
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     async with (
-        httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client,
+        httpx2.AsyncClient(transport=httpx2.MockTransport(respond)) as client,
         Bot("synthetic", client=client) as bot,
         asyncio.timeout(3),
     ):

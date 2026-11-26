@@ -3,7 +3,7 @@ import socket
 from collections.abc import AsyncIterator
 from typing import Never
 
-import httpx
+import httpx2
 import pytest
 
 from python_vk_bot import Application, Bot
@@ -31,13 +31,13 @@ def api() -> MockAPI:
 
 
 @pytest.fixture
-async def client(api: MockAPI) -> AsyncIterator[httpx.AsyncClient]:
-    async with httpx.AsyncClient(transport=httpx.MockTransport(api)) as client:
+async def client(api: MockAPI) -> AsyncIterator[httpx2.AsyncClient]:
+    async with httpx2.AsyncClient(transport=httpx2.MockTransport(api)) as client:
         yield client
 
 
 @pytest.fixture
-def bot(client: httpx.AsyncClient) -> Bot:
+def bot(client: httpx2.AsyncClient) -> Bot:
     return Bot("synthetic-community-token", client=client)
 
 

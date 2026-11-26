@@ -3,19 +3,19 @@
 from collections import deque
 from urllib.parse import parse_qs
 
-import httpx
+import httpx2
 from pydantic import JsonValue
 
 
 class MockAPI:
     def __init__(self) -> None:
-        self.requests: list[httpx.Request] = []
-        self.responses: deque[httpx.Response | Exception] = deque()
+        self.requests: list[httpx2.Request] = []
+        self.responses: deque[httpx2.Response | Exception] = deque()
 
     def add(self, payload: JsonValue, *, status: int = 200) -> None:
-        self.responses.append(httpx.Response(status, json=payload))
+        self.responses.append(httpx2.Response(status, json=payload))
 
-    def __call__(self, request: httpx.Request) -> httpx.Response:
+    def __call__(self, request: httpx2.Request) -> httpx2.Response:
         self.requests.append(request)
         if not self.responses:
             raise AssertionError("Unexpected HTTP request")
@@ -25,7 +25,7 @@ class MockAPI:
         return response
 
 
-def form(request: httpx.Request) -> dict[str, str]:
+def form(request: httpx2.Request) -> dict[str, str]:
     return {key: values[0] for key, values in parse_qs(request.content.decode()).items()}
 
 

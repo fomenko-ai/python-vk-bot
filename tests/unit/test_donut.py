@@ -1,6 +1,6 @@
 """Donut event contracts and dispatch through the existing Callback pipeline."""
 
-import httpx
+import httpx2
 import pytest
 from pydantic import JsonValue, ValidationError
 
@@ -252,8 +252,8 @@ async def test_http_rejects_malformed_donut_and_accepts_valid_event(
     app = callback.create_app()
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://callback.example"
+        httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="https://callback.example"
         ) as receiver,
     ):
         payload = {**donut_payload(), "secret": "synthetic", "object": {"user_id": "7"}}

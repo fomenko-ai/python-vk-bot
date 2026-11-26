@@ -3,7 +3,7 @@
 import json
 from typing import cast
 
-import httpx
+import httpx2
 import pytest
 from pydantic import JsonValue, ValidationError
 
@@ -41,7 +41,7 @@ async def send(bot: Bot, *, forwarding: bool, random_id: int | None = None) -> M
 @pytest.mark.parametrize("forwarding", [False, True])
 @pytest.mark.parametrize("message_id", [0, 105])
 async def test_detailed_send_ids_and_generated_random_id(
-    bot: Bot, api: MockAPI, forwarding: bool, message_id: int, client: httpx.AsyncClient
+    bot: Bot, api: MockAPI, forwarding: bool, message_id: int, client: httpx2.AsyncClient
 ) -> None:
     api.add({"response": [sent_item(message_id=message_id, future={"value": 1})]})
     async with bot:
@@ -253,7 +253,7 @@ async def test_outer_api_error(bot: Bot, api: MockAPI, forwarding: bool) -> None
 
 @pytest.mark.parametrize("forwarding", [False, True])
 async def test_network_failure_does_not_resend(bot: Bot, api: MockAPI, forwarding: bool) -> None:
-    api.responses.append(httpx.ReadTimeout("private payload"))
+    api.responses.append(httpx2.ReadTimeout("private payload"))
     async with bot:
         with pytest.raises(NetworkError):
             await send(bot, forwarding=forwarding)

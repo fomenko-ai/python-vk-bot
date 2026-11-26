@@ -9,7 +9,7 @@ from email.parser import BytesParser
 from pathlib import Path
 from typing import Literal
 
-import httpx
+import httpx2
 import pytest
 from pydantic import JsonValue
 
@@ -28,7 +28,7 @@ from python_vk_bot.transport import FileInput
 from .helpers import MockAPI, form, queue_photo_upload
 
 
-def multipart_file(request: httpx.Request) -> MIMEPart:
+def multipart_file(request: httpx2.Request) -> MIMEPart:
     wire = (
         f"Content-Type: {request.headers['content-type']}\r\nMIME-Version: 1.0\r\n\r\n".encode()
         + request.content
@@ -45,7 +45,7 @@ def multipart_file(request: httpx.Request) -> MIMEPart:
 async def test_photo_upload_multipart_and_ownership(
     bot: Bot,
     api: MockAPI,
-    client: httpx.AsyncClient,
+    client: httpx2.AsyncClient,
     tmp_path: Path,
     source_kind: str,
     explicit_name: bool,
@@ -55,7 +55,7 @@ async def test_photo_upload_multipart_and_ownership(
     path = tmp_path / "карта.png"
     path.write_bytes(content)
     queue_photo_upload(api)
-    with ExitStack() as stack, caplog.at_level(logging.INFO, logger="httpx"):
+    with ExitStack() as stack, caplog.at_level(logging.INFO, logger="httpx2"):
         source: FileInput
         if source_kind == "bytes":
             source = content
@@ -169,7 +169,7 @@ async def test_upload_http_failure_never_saves_or_retries(
 ) -> None:
     api.add({"response": {"upload_url": "https://upload.example/file"}})
     api.responses.append(
-        httpx.Response(status, headers={"location": "https://redirect.example/"}, json={})
+        httpx2.Response(status, headers={"location": "https://redirect.example/"}, json={})
     )
     async with bot:
         with pytest.raises(HTTPError) as caught:
@@ -178,9 +178,9 @@ async def test_upload_http_failure_never_saves_or_retries(
     assert len(api.requests) == 2
 
 
-@pytest.mark.parametrize("error", [httpx.ReadTimeout, httpx.WriteTimeout, httpx.ConnectError])
+@pytest.mark.parametrize("error", [httpx2.ReadTimeout, httpx2.WriteTimeout, httpx2.ConnectError])
 async def test_upload_network_failure_is_safe(
-    bot: Bot, api: MockAPI, error: type[httpx.RequestError]
+    bot: Bot, api: MockAPI, error: type[httpx2.RequestError]
 ) -> None:
     api.add({"response": {"upload_url": "https://upload.example/file"}})
     api.responses.append(error("private-url"))
@@ -217,7 +217,7 @@ async def test_invalid_photo_upload_responses_stop_before_save(
 
 async def test_upload_invalid_json(bot: Bot, api: MockAPI) -> None:
     api.add({"response": {"upload_url": "https://upload.example/file"}})
-    api.responses.append(httpx.Response(200, content=b"private-not-json"))
+    api.responses.append(httpx2.Response(200, content=b"private-not-json"))
     async with bot:
         with pytest.raises(InvalidResponseError, match="invalid JSON"):
             await bot.upload_document(7, b"document")
@@ -320,11 +320,11 @@ async def test_upload_rejects_conflicting_client_defaults_before_reading(
 ) -> None:
     params = {"trace": "private-value"} if default == "params" else {}
     headers = {} if default == "params" else {default: "application/json"}
-    async with httpx.AsyncClient(
-        transport=httpx.MockTransport(api), params=params, headers=headers
+    async with httpx2.AsyncClient(
+        transport=httpx2.MockTransport(api), params=params, headers=headers
     ) as client:
-        original_params = httpx.QueryParams(client.params)
-        original_headers = httpx.Headers(client.headers)
+        original_params = httpx2.QueryParams(client.params)
+        original_headers = httpx2.Headers(client.headers)
         with io.BytesIO(b"image") as source:
             bot = Bot("synthetic-token", client=client)
             with pytest.raises(LifecycleError):
@@ -386,12 +386,14 @@ async def test_file_read_runs_off_loop_and_repeated_cancellation_drains_it(
 async def test_network_cancellation_during_upload_never_saves() -> None:
     entered = asyncio.Event()
     released = asyncio.Event()
-    requests: list[httpx.Request] = []
+    requests: list[httpx2.Request] = []
 
-    async def respond(request: httpx.Request) -> httpx.Response:
+    async def respond(request: httpx2.Request) -> httpx2.Response:
         requests.append(request)
         if len(requests) == 1:
-            return httpx.Response(200, json={"response": {"upload_url": "https://upload.example/"}})
+            return httpx2.Response(
+                200, json={"response": {"upload_url": "https://upload.example/"}}
+            )
         entered.set()
         try:
             await asyncio.Event().wait()
@@ -399,7 +401,7 @@ async def test_network_cancellation_during_upload_never_saves() -> None:
             released.set()
         raise AssertionError("Unreachable")
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+    async with httpx2.AsyncClient(transport=httpx2.MockTransport(respond)) as client:
         async with Bot("synthetic-token", client=client) as bot, asyncio.timeout(2):
             task = asyncio.create_task(bot.upload_photo(7, b"image"))
             await entered.wait()

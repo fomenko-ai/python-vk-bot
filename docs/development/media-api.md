@@ -164,8 +164,8 @@ recipients (documented error 924). No Telegram time window is imposed locally.
 
 ## Resources and limitations
 
-The reusable `httpx.AsyncClient` performs network I/O asynchronously. Local files are
-read in a worker thread before multipart upload; HTTPX never reads a disk file on the
+The reusable `httpx2.AsyncClient` performs network I/O asynchronously. Local files are
+read in a worker thread before multipart upload; HTTPX2 never reads a disk file on the
 event loop. **The current uploader buffers the whole file in memory.** It is intended
 for inputs that fit comfortably in process memory, not streaming multi-gigabyte files.
 Avoid unbounded concurrent uploads. No extra runtime dependency is introduced.
@@ -177,7 +177,7 @@ a blocking custom file reader can therefore delay cancellation. Network cancella
 propagates, and owned clients close with Bot's lifecycle.
 
 Only HTTPS upload URLs returned by VK are used, without the community Authorization
-header or redirects. HTTPX request logs redact query parameters. HTTP failures use
+header or redirects. HTTPX2 request logs redact query parameters. HTTP failures use
 `HTTPError`, network/timeouts use `NetworkError`, upload rejection uses `UploadError`,
 malformed responses use `InvalidResponseError`, and save/edit/delete API errors retain
 their code and method. File read/argument errors use `ValueError` or `TypeError`.
@@ -186,7 +186,7 @@ For uploads, an injected client must have empty default query parameters and no
 default `Content-Type` header (case-insensitive). After the lifecycle check,
 `HTTPTransport.upload` raises `ValueError` for either conflict before reading a file
 or sending the multipart request. This preserves the server URL's query and lets
-HTTPX generate the multipart boundary. Client settings are never modified and the
+HTTPX2 generate the multipart boundary. Client settings are never modified and the
 borrowed client stays caller-owned. Bot upload methods may already have requested
 an upload server before this check; the restriction applies to the multipart stage.
 

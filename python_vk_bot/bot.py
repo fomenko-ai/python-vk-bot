@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from types import TracebackType
 from typing import Literal, Self
 
-import httpx
+import httpx2
 from pydantic import BaseModel, JsonValue, SecretStr, TypeAdapter, ValidationError
 
 from ._config import DEFAULT_API_VERSION, DEFAULT_TIMEOUT, TransportConfig
@@ -117,7 +117,7 @@ class Bot:
         *,
         api_version: str = DEFAULT_API_VERSION,
         timeout: float = DEFAULT_TIMEOUT,
-        client: httpx.AsyncClient | None = None,
+        client: httpx2.AsyncClient | None = None,
     ) -> None:
         config = TransportConfig(
             token=token if isinstance(token, SecretStr) else SecretStr(token),

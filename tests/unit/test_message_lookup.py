@@ -1,6 +1,6 @@
 from typing import cast
 
-import httpx
+import httpx2
 import pytest
 from pydantic import JsonValue
 
@@ -132,8 +132,10 @@ async def test_api_errors(bot: Bot, api: MockAPI, code: int) -> None:
     assert len(api.requests) == 1
 
 
-@pytest.mark.parametrize("error_type", [httpx.ReadTimeout, httpx.ConnectError])
-async def test_network_errors(bot: Bot, api: MockAPI, error_type: type[httpx.RequestError]) -> None:
+@pytest.mark.parametrize("error_type", [httpx2.ReadTimeout, httpx2.ConnectError])
+async def test_network_errors(
+    bot: Bot, api: MockAPI, error_type: type[httpx2.RequestError]
+) -> None:
     api.responses.append(error_type("private-network-marker"))
     async with bot:
         with pytest.raises(NetworkError) as captured:
