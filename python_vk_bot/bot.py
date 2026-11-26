@@ -170,10 +170,39 @@ class Bot:
         return users[0] if users else None
 
     async def get_message(self, peer_id: int, conversation_message_id: int) -> Optional[Message]:
+        """Fetch one message, returning None only for confirmed absence.
+
+        Invalid identifiers raise ValueError before the request. Malformed or
+        inconsistent responses raise InvalidResponseError; API and transport
+        errors propagate unchanged. No retries or fallback requests are made.
+        """
+        peer_id = _peer_identifier(peer_id)
+        conversation_message_id = _message_identifier(None, conversation_message_id)
         result = await self.request(
             "messages.getByConversationMessageId",
             {"peer_id": peer_id, "conversation_message_ids": conversation_message_id},
         )
+        if not isinstance(result, dict):
+            raise InvalidResponseError("Invalid message lookup response")
+        count = result.get("count")
+        items = result.get("items")
+        if (
+            type(count) is not int
+            or count not in (0, 1)
+            or not isinstance(items, list)
+            or count != len(items)
+        ):
+            raise InvalidResponseError("Invalid message lookup count or items")
+        if count == 1:
+            item = items[0]
+            if not isinstance(item, dict) or any(
+                type(item.get(field)) is not int or item[field] != expected
+                for field, expected in (
+                    ("peer_id", peer_id),
+                    ("conversation_message_id", conversation_message_id),
+                )
+            ):
+                raise InvalidResponseError("Message lookup result has unexpected identifiers")
         page = _parse(MessagePage, result)
         return page.items[0] if page.items else None
 

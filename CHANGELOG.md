@@ -4,6 +4,14 @@ All notable changes will be documented here, following Keep a Changelog.
 
 ## Unreleased
 
+## 0.8.1 - 2026-11-26
+
+### Fixed
+
+- `Bot.get_message` returns `None` only for confirmed absence and raises
+  `InvalidResponseError` for malformed counts or mismatched message identifiers.
+  Invalid input identifiers raise `ValueError` before any HTTP request.
+
 ## 0.8.0 - 2026-11-26
 
 ### Added

@@ -1,5 +1,32 @@
 # Verification
 
+## Message lookup validation transfer (2026-11-26, production stage)
+
+Source main commit `fbabd118098be5e0f1cc50d9c4c3610885730545` is selectively
+transferred onto compat/py39 base `a467a40`. Validation and shared API/PTB
+documentation are included; the return annotation remains Optional[Message].
+By subsequent user request, version 0.8.1 and changelog date 2026-11-26
+match the source. Branch dependencies and Python targets are preserved.
+No commit is created; the user controls staging and committing.
+
+Passed: locked all-extras uv sync on Python 3.14.4, Ruff lint and format check,
+ty and git diff --check. All 474 existing tests passed on Python 3.14.4 before
+the compatibility matrix. Both compatibility scripts passed on Python 3.9.25,
+3.10.20, 3.11.15, 3.12.13, 3.13.14 and 3.14.4: 23 package sources checked for
+syntax and 474 existing regression cases passed on each interpreter.
+Sandbox cache restrictions required elevated uv execution.
+
+The new source test_message_lookup.py awaits approval of the transferred
+production code under AGENTS.md; these results do not cover its 82 new cases.
+Official VK schema/package sources were rechecked on 2026-11-26 and still
+report 5.199 / 5.199.99; the uncertainty recorded in API compatibility remains.
+No live VK calls, packaging build, commit, push, tag or publication.
+
+After the metadata update, uv lock changed only the local project version.
+Locked all-extras sync, Ruff lint/format, ty, git diff --check and all 474 tests
+passed on Python 3.14.4. The interpreter matrix was not repeated for this
+metadata-only update; runtime code and dependency versions are unchanged.
+
 ## Detailed send results transfer (2026-11-26, production stage)
 
 Source main commit `c9b7f13dfe3d56e1b286620fc61216707e754823` is selectively
