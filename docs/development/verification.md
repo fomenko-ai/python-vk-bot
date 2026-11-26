@@ -1,5 +1,34 @@
 # Verification
 
+## Message identifiers, version 0.8.0 (2026-11-26)
+
+After approval of the production implementation, added 110 HTTP-mock regression
+cases in tests/unit/test_message_send_ids.py. They cover both detailed send methods,
+zero/positive global IDs, retained extra fields, parameter serialization, random_id
+generation and boundaries, source/destination separation when forwarding, recipient
+and outer errors, malformed results, no resend after network failure, editing by
+conversation ID, public model exports/validation and integer-returning send compatibility.
+The existing test fixtures block sockets and DNS. No live VK calls were made.
+
+Verified on CPython **3.14.4**, with the Callback extra installed:
+
+| Check | Result |
+| --- | --- |
+| `uv lock` | Passed; only the project version changed in uv.lock |
+| `uv sync --all-extras` | Passed |
+| `uv sync --locked --all-extras` | Passed |
+| `uv run ruff check .` | Passed |
+| `uv run ruff format --check .` | Passed, 78 files |
+| `uv run ty check` | Passed |
+| `uv run pytest --strict-markers` | Passed, 574 tests |
+| Focused new suite after final raw-regex lint adjustment | Passed, 110 tests |
+| `git diff --check` | Passed |
+| Live VK / other Python versions | Not run for this change |
+
+The user authorized the version/date update: metadata and lockfile use **0.8.0**,
+with changelog date **2026-11-26**. No commit, tag, push or publication was performed.
+See [API verification and its source-access limitations](api-compatibility.md#detailed-send-results-verification-2026-11-26).
+
 ## Keyboard limits, version 0.7.0 (2026-11-16)
 
 Verified on Python 3.14.4. Keyboard regression coverage includes exact dimension

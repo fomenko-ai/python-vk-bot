@@ -168,9 +168,48 @@ connection data. `Bot.request(method, parameters)` exposes raw JSON results for 
 VK methods; nested request parameters must be JSON encoded explicitly.
 
 Messages use `peer_id`; `Message` exposes both `id` and `conversation_message_id`.
-`send_message` returns an integer message ID and accepts an optional nonzero int32
-`random_id`. Sends are never retried automatically. `edit_message` accepts exactly one
+`send_message` returns an integer, which may be `0` for a community send to a chat,
+and accepts an optional nonzero int32 `random_id`. Sends are never retried automatically.
+`edit_message` accepts exactly one
 message identifier and maps `conversation_message_id` to VK's `cmid` parameter.
+
+### Send, edit and forward using conversation IDs
+
+`send_message_and_get_ids` returns a `MessageSendResult`, also exported from
+`python_vk_bot.models`. Its `peer_id` identifies the recipient;
+`conversation_message_id` is positive and belongs to that peer. The separate global
+`message_id` is positive when available, or `None` when VK returns `0`.
+
+```python
+async with Bot(token) as bot:
+    sent = await bot.send_message_and_get_ids(peer_id, "Original text", random_id=12345)
+    await bot.edit_message(
+        sent.peer_id,
+        "Updated text",
+        conversation_message_id=sent.conversation_message_id,
+    )
+    forwarded = await bot.forward_message_and_get_ids(
+        destination_peer_id,
+        from_peer_id=sent.peer_id,
+        conversation_message_id=sent.conversation_message_id,
+        random_id=12346,
+    )
+    # forwarded IDs identify the new message in destination_peer_id.
+```
+
+The send method supports `text`, `keyboard`, `attachment`, `dont_parse_links` and
+`random_id`. The forwarding method forwards one message by its source peer and
+conversation ID, with optional `random_id`; it does not add accompanying content.
+Both use `peer_ids` with one recipient and require one matching result with usable
+conversation identifiers. Recipient errors raise `APIError` (`RateLimitError` for
+code 6); malformed results raise `InvalidResponseError`. A response-validation or
+network failure can occur after delivery: neither method sends a fallback or retries.
+To control deduplication when retrying, retain and reuse an explicit `random_id`.
+
+These public methods and the three result fields follow the project's alpha API
+stability policy: changes are documented in the changelog; unknown VK response
+fields are retained as extras but are not stable library-defined fields.
+`forward_message(peer_id, message, random_id=...)` returns an integer result.
 
 ## Callback API
 

@@ -1,3 +1,4 @@
+from .api import MessageSendResult
 from .attachments import (
     Attachment,
     AudioMessageAttachment,
@@ -33,6 +34,7 @@ __all__ = [
     "LocationButton",
     "Message",
     "MessageEvent",
+    "MessageSendResult",
     "OpenLinkButton",
     "PhotoAttachment",
     "ShowSnackbar",

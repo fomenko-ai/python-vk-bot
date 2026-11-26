@@ -1,5 +1,60 @@
 # python-telegram-bot design reference
 
+The implemented-design overview comes first. Reference reviews then follow in reverse
+chronological order by verification date; dates describe the individual review,
+not a new verification of every linked source.
+
+## Implemented design
+
+| PTB | python-vk-bot | Compatibility | Difference |
+| --- | --- | --- | --- |
+| Application | Application | Responsibility | Awaitable runner; no event-loop ownership |
+| Bot | Bot | Responsibility | Community token, VK methods and peer IDs |
+| Update | Update with typed message/event objects | Conceptual | VK event_id, group_id, v; unknown events retained |
+| Updater | LongPoll | Partial | VK key/server/ts and failed recovery |
+| MessageHandler | MessageHandler | Conceptual | VK message_new; geo remains part of message |
+| CallbackQueryHandler | MessageEventHandler | Different name | VK message_event is not a Telegram callback query |
+| CallbackContext | Context | Partial | user_data, peer_data, bot_data; no Telegram chat aliases |
+| filters | filters | Small subset | Text, location, regex and boolean composition |
+| Error handlers | Application.add_error_handler | Partial | Error callback receives Context.error; failure still propagates |
+| ConversationHandler | None | Deferred | Application state can implement simple levels |
+| ApplicationBuilder | None | Deferred | Direct construction is sufficient |
+| Explicit Bot / ApplicationBuilder configuration | BotSettings plus explicit constructors | Deliberate extension | Optional use of environment-backed settings, not a builder |
+
+Callback API is HTTP event delivery, distinct from an interactive message_event. Long
+Poll and Callback feed the same validated update/dispatch pipeline but have different
+acknowledgement and resource semantics. No Telegram transport, permission, keyboard,
+or message identifier assumptions are copied. No PTB implementation code is copied.
+
+## Message send results
+
+Rechecked on **2026-11-26** against stable **PTB 22.8**, identified by the
+[stable Bot documentation](https://docs.python-telegram-bot.org/en/stable/telegram.bot.html):
+
+- [Bot.send_message](https://docs.python-telegram-bot.org/en/v22.8/telegram.bot.html#telegram.Bot.send_message)
+- [Bot.forward_message](https://docs.python-telegram-bot.org/en/v22.8/telegram.bot.html#telegram.Bot.forward_message)
+
+PTB returns a Message from sending and forwarding. VK's peer_ids response contains
+identifiers rather than a complete message, so send_message_and_get_ids and
+forward_message_and_get_ids return MessageSendResult instead of fabricating a
+Message or performing another request. The result distinguishes global and
+conversation-scoped IDs; Telegram's chat/message ID semantics are not imported.
+Forwarding accepts explicit source identifiers, with VK's native source peer and
+conversation_message_ids serialized in forward. Models stay in models/api.py,
+method orchestration stays in Bot, and transport/lifecycle contracts are unchanged.
+See [current usage and stability](../../README.md#send-edit-and-forward-using-conversation-ids).
+
+## Keyboard limits reference
+
+Keyboard limits reviewed on **2026-11-16** against stable **PTB 22.8**, identified
+by the [stable InlineKeyboardMarkup documentation](https://docs.python-telegram-bot.org/en/stable/telegram.inlinekeyboardmarkup.html).
+The row-based button layout remains the conceptual reference. VK's own dimensions,
+location/vkpay row rules and label policy are centralized in `python_vk_bot.limits`
+and enforced by existing Pydantic models; no Telegram numeric limits are imported.
+Keyboard JSON serialization rechecks mutable rows and raw dictionaries. No layout
+builder or additional validator abstraction is introduced. See the
+[keyboard validation contract](../development/keyboards.md#references-and-limits).
+
 ## Native buttons, event answers and HTTP delays
 
 Rechecked on **2026-11-06** against stable **PTB 22.8**, identified by the
@@ -88,15 +143,6 @@ HTTP acknowledgement waits for dispatch, not just insertion into volatile memory
 
 ## Keyboard API reference
 
-Keyboard limits reviewed on **2026-11-16** against stable **PTB 22.8**, identified
-by the [stable InlineKeyboardMarkup documentation](https://docs.python-telegram-bot.org/en/stable/telegram.inlinekeyboardmarkup.html).
-The row-based button layout remains the conceptual reference. VK's own dimensions,
-location/vkpay row rules and label policy are centralized in `python_vk_bot.limits`
-and enforced by existing Pydantic models; no Telegram numeric limits are imported.
-Keyboard JSON serialization rechecks mutable rows and raw dictionaries. No layout
-builder or additional validator abstraction is introduced. See the
-[keyboard validation contract](../development/keyboards.md#references-and-limits).
-
 Rechecked on **2026-11-02** against stable **PTB 22.8**:
 
 - [Inline keyboard example](https://docs.python-telegram-bot.org/en/v22.8/examples.inlinekeyboard.html)
@@ -159,28 +205,6 @@ the first matching handler in each group runs. Context exposes user/chat/bot sta
 error callbacks receive processing exceptions. Conversation management is an additional
 handler abstraction, not a requirement for ordinary dispatch. Async execution does not
 itself make shared mutable state safe under concurrency.
-
-## Implemented design
-
-| PTB | python-vk-bot | Compatibility | Difference |
-| --- | --- | --- | --- |
-| Application | Application | Responsibility | Awaitable runner; no event-loop ownership |
-| Bot | Bot | Responsibility | Community token, VK methods and peer IDs |
-| Update | Update with typed message/event objects | Conceptual | VK event_id, group_id, v; unknown events retained |
-| Updater | LongPoll | Partial | VK key/server/ts and failed recovery |
-| MessageHandler | MessageHandler | Conceptual | VK message_new; geo remains part of message |
-| CallbackQueryHandler | MessageEventHandler | Different name | VK message_event is not a Telegram callback query |
-| CallbackContext | Context | Partial | user_data, peer_data, bot_data; no Telegram chat aliases |
-| filters | filters | Small subset | Text, location, regex and boolean composition |
-| Error handlers | Application.add_error_handler | Partial | Error callback receives Context.error; failure still propagates |
-| ConversationHandler | None | Deferred | Application state can implement simple levels |
-| ApplicationBuilder | None | Deferred | Direct construction is sufficient |
-| Explicit Bot / ApplicationBuilder configuration | BotSettings plus explicit constructors | Deliberate extension | Optional use of environment-backed settings, not a builder |
-
-Callback API is HTTP event delivery, distinct from an interactive message_event. Long
-Poll and Callback feed the same validated update/dispatch pipeline but have different
-acknowledgement and resource semantics. No Telegram transport, permission, keyboard,
-or message identifier assumptions are copied. No PTB implementation code is copied.
 
 Settings addition reviewed on 2026-10-31 against the same PTB 22.8 reference.
 PTB's builder accepts token and request settings explicitly. BotSettings is our reusable

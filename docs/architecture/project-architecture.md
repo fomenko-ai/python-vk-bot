@@ -25,7 +25,7 @@ python_vk_bot/
   errors.py         safe, structured error categories
   models/
     base.py         extra-field retention policy
-    api.py          API errors, envelopes and Long Poll responses
+    api.py          API errors, envelopes, message-send results and Long Poll responses
     attachments.py  typed media envelopes, raw fallback and identifier serialization
     messages.py     messages, geo, users and keyboard structures
     keyboards.py    typed outgoing buttons, enums and VK JSON serialization
@@ -150,6 +150,19 @@ messages.send should supply the same random_id and account for VK's finite dedup
 window, rather than assuming an unlimited guarantee.
 
 ## Model and transport choices
+
+Bot.send_message_and_get_ids and Bot.forward_message_and_get_ids use messages.send
+with a single peer_ids recipient. Bot owns serialization, recipient matching and
+error mapping. models/api.py holds the public MessageSendResult and private wire
+models; transport still handles only the HTTP/API envelope. Results distinguish
+an optional positive global message_id from a required positive peer-scoped
+conversation_message_id. VK's zero global ID becomes None. Unknown response fields
+survive in the result. Forwarding takes one explicit source peer/conversation ID
+pair, independent of the destination. Neither operation fetches messages or retries.
+See the [usage and stability contract](../../README.md#send-edit-and-forward-using-conversation-ids)
+and [VK verification](../development/api-compatibility.md#detailed-send-results-verification-2026-11-26).
+Network-free HTTP-mock regressions cover both methods, malformed replies, recipient
+errors, random_id handling and the integer-returning methods' contracts on Python 3.14.
 
 BotSettings derives from pydantic-settings BaseSettings. Instances read VK_* variables;
 dotenv loading is explicit through `_env_file`. The library creates no global settings

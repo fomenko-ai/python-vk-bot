@@ -1,24 +1,27 @@
 # VK API support
 
-Verification date: **2026-11-16** (keyboard limits; other contracts retain their dates below).
-Implementation target:
-**5.199**, represented as a string.
-The official [version history](https://dev.vk.com/ru/reference/versions) lists 5.199 as
-the newest documented version. Its entry describes internal changes without a method,
-parameter, or response change. The official [VKCOM schema](https://github.com/VKCOM/vk-api-schema)
-README also targets 5.199; package version 5.199.99 identifies the schema package, not
-an API version to send.
+Latest recorded verification: **2026-11-26** (detailed sends).
+Implementation target: **5.199**, represented as a string.
+The official [VKCOM schema](https://github.com/VKCOM/vk-api-schema) README targets
+5.199; package version 5.199.99 identifies the schema package, not an API version
+to send. The latest version-history check received a partial page whose article
+list starts with 5.199; see the [dated verification and retrieval limitations](#detailed-send-results-verification-2026-11-26).
 
-The version history, Long Poll, Callback, messages.send and messages.edit pages were
-verified through direct HTTPS retrieval. No authenticated calls were made. Availability
-and permissions with live community tokens remain unverified. Recheck these sources
-before changing version-dependent behavior.
+Current coverage and contracts come first. Dated verification records then follow
+in reverse chronological order, with the date and source-access limitations of
+each review retained. The HTTP Retry-After contract belongs to the 2026-11-06
+buttons/event-answer review. General uncertainties and source links close the document.
+
+Official documentation was checked through direct HTTPS retrieval and schema
+inspection as described in the individual records. No authenticated calls were
+made. Live community-token availability and permissions remain unverified.
+Recheck the relevant sources before changing version-dependent behavior.
 
 ## Implemented coverage
 
 | Method / delivery | Library support |
 | --- | --- |
-| messages.send | Bot.send_message / forward_message; one peer, integer result; nonzero int32 random_id |
+| messages.send | Bot.send_message / forward_message return integers; send_message_and_get_ids / forward_message_and_get_ids use one peer_ids recipient and return MessageSendResult; nonzero int32 random_id |
 | messages.edit | Bot.edit_message / edit_message_media; message_id or documented cmid, attachment and keyboard, returns bool |
 | messages.delete | Bot.delete_message; one message_id or peer-scoped cmid; explicit recipient-side deletion |
 | photos.getMessagesUploadServer / photos.saveMessagesPhoto | Bot.upload_photo; multipart photo upload and typed saved attachment |
@@ -38,7 +41,8 @@ before changing version-dependent behavior.
 
 - `messages.send`: peer_id, message, random_id, keyboard JSON,
   attachment, dont_parse_links; forwarding uses forward JSON with source peer_id and
-  conversation_message_ids. Only single-recipient sends are wrapped. Raw Bot.request
+  conversation_message_ids. Detailed sends use peer_ids instead of peer_id and parse
+  one recipient's IDs/error. Only single-recipient sends are wrapped. Raw Bot.request
   can return other documented response forms without implying typed coverage.
 - `messages.edit`: peer_id, optional message/attachment, exactly one message_id/cmid, keyboard JSON,
   dont_parse_links; documented success response is 1.
@@ -51,6 +55,88 @@ before changing version-dependent behavior.
   the polling server. Request read timeout exceeds the requested wait.
 - Event envelope: type, group_id, event_id, v, object. Callback secret is checked before
   validation and is excluded from the dispatched Update. Unknown fields are retained.
+
+## Messaging contracts
+
+- Generated random_id values are nonzero positive int32 integers. Callers can provide a stable
+  nonzero signed int32 ID; no message sends are automatically retried.
+- `Bot.edit_message` maps its conversation_message_id argument to VK's documented cmid.
+- Forwarding identifies its source by the source peer and conversation message ID.
+  `forward_message` reads them from Message; `forward_message_and_get_ids` accepts
+  them explicitly. The source peer can differ from the message author in group chats.
+- Batch sending remains outside the typed wrapper.
+- Attachments retain arbitrary JSON, including fields not explicitly modeled by the library.
+- Coverage is limited to the methods and fields described here; other VK API capabilities
+  are not claimed as typed library features.
+
+## Delivery and failure semantics
+
+Long Poll failed=1 advances to the supplied ts and reports possible history loss.
+Failed=2 refreshes session credentials while keeping the previous cursor. Failed=3
+obtains both credentials and a new cursor. Recovery is iterative. Unexpected shapes
+or unknown failure codes fail visibly. Network failures, HTTP 429/5xx and VK error 6
+are retried only in the polling loop; authentication failures propagate. Delay caps
+are local retry policy, not claimed VK request limits.
+
+Callback requires the configured group and secret even for confirmation. Confirmation
+returns the configured code; ordinary success returns HTTP 200 with `ok`. Failures are
+not acknowledged as successful. Event deduplication is bounded, in-memory, and only
+records successful dispatch; it does not provide exactly-once side effects. See the
+[architecture](../architecture/project-architecture.md) for partial-failure limitations.
+
+Community tokens need the permissions for the selected methods. Bots cannot assume they
+may initiate conversations; VK permission/privacy errors are propagated without retries.
+Long Poll/Callback must be enabled and subscribed to relevant events in community settings.
+The event API version is configured there independently from the outbound request version.
+
+## Detailed send results verification, 2026-11-26
+
+Rechecked the official [version history](https://dev.vk.com/ru/reference/versions)
+and [messages.send page](https://dev.vk.ru/ru/method/messages.send) through direct
+HTTPS retrieval. The method page was retrieved successfully. The version-history
+transfer timed out after receiving part of the HTML; its received article list
+starts with **5.199**, followed by 5.195 and earlier versions. The .ru history
+requests timed out without data. This is a partial-page version check, not a
+claim of a complete successful retrieval. The current official schema
+[README](https://github.com/VKCOM/vk-api-schema/blob/master/README.md) independently
+targets **5.199**. The library target remains 5.199; no authenticated calls were made.
+
+The method page documents peer_ids as comma-separated recipients and its response
+as an array containing peer_id, message_id, conversation_message_id and error.
+The official [methods schema](https://github.com/VKCOM/vk-api-schema/blob/master/messages/methods.json)
+models peer_ids as an array and forward as JSON. The library encodes one recipient
+as its decimal string in the form body, without also sending peer_id.
+The [response schema](https://github.com/VKCOM/vk-api-schema/blob/master/messages/responses.json)
+uses messages_send_user_ids_response for the array; that schema name does not
+limit recipients to user IDs. The
+[item/forward schema](https://github.com/VKCOM/vk-api-schema/blob/master/messages/objects.json)
+requires the three IDs, allows zero message IDs, and describes source peer_id and
+conversation_message_ids in forward. Per-recipient errors use code/description,
+as defined in the [base schema](https://github.com/VKCOM/vk-api-schema/blob/master/base/objects.json),
+rather than the outer API envelope's error_code/error_msg.
+
+Library policy for successful detailed sends is stricter than the schema's
+nonnegative IDs: conversation_message_id must be positive; message_id must be
+a nonnegative integer on the wire, with zero normalized to None in MessageSendResult.
+Missing/null success IDs, strings, booleans, negative IDs, non-array results,
+empty/multiple results and a different peer are InvalidResponseError. Error
+results may omit IDs or contain zero IDs; a valid positive error.code raises
+APIError, or RateLimitError for code 6. A malformed error or malformed supplied
+identifier raises InvalidResponseError. Server error descriptions are not included
+in library exception messages. Unknown successful result fields are retained.
+
+The new methods validate peer IDs as nonzero integers (negative community peers
+are allowed); forwarding requires one positive source conversation_message_id.
+All send paths reuse the existing random_id policy: None generates a positive
+nonzero signed-int32 value; an explicit nonzero signed-int32 value is preserved.
+No automatic resend, fallback or fetch is performed. Successful delivery with a
+zero global ID remains usable through the peer/conversation ID pair. Actual
+community-token availability, permissions and live delivery remain unverified.
+Network-free regressions in tests/unit/test_message_send_ids.py cover successful
+zero/positive global IDs, serialization and forwarding, random_id generation and
+boundaries, invalid replies, recipient/outer API errors, network failure without
+resending, conversation-ID editing and integer-returning method compatibility.
+These HTTP-mock checks run on Python 3.14 and do not verify live VK behavior.
 
 ## Buttons and event answers
 
@@ -75,6 +161,8 @@ open_link section does not specify a numeric limit. Unknown actions retain their
 fields and are subject only to general dimensions (plus the documented raw vkpay
 row rule). Payload validation is unchanged. Unicode character-count semantics
 beyond Python `len` and live server boundary behavior remain unverified.
+
+### Buttons and event answers verification, 2026-11-06
 
 Rechecked on **2026-11-06** at implementation time through direct HTTPS retrieval:
 the [version history](https://dev.vk.com/ru/reference/versions) still lists **5.199** first.
@@ -103,6 +191,8 @@ for callback clicks. No authenticated delivery was tested. See the
 [keyboard guide](keyboards.md) for limits and the precise serialization contract.
 
 ## HTTP Retry-After
+
+Recorded with the **2026-11-06** buttons/event-answer review.
 
 `HTTPError(status_code, *, retry_after=None)` exposes an optional delay in seconds.
 The shared HTTP transport reads the header for every non-success HTTP response,
@@ -164,51 +254,21 @@ negative subscription results. Callback parsing is supported without claiming Do
 delivery through Bots Long Poll. Live community delivery remains unverified.
 See the [Donut guide](donut.md) for event/entitlement boundaries and duplicate handling.
 
-## Messaging contracts
+## Typed keyboard verification
 
-- Generated random_id values are nonzero positive int32 integers. Callers can provide a stable
-  nonzero signed int32 ID; no message sends are automatically retried.
-- `Bot.edit_message` maps its conversation_message_id argument to VK's documented cmid.
-- Forwarding identifies its source by message.peer_id, not message.from_id; these differ
-  in group conversations.
-- Batch sending remains outside the typed wrapper.
-- Attachments retain arbitrary JSON, including fields not explicitly modeled by the library.
-- Coverage is limited to the methods and fields described here; other VK API capabilities
-  are not claimed as typed library features.
+On **2026-11-02**, direct HTTPS retrieval of the official version history confirmed
+5.199 as its newest documented entry. The keyboard guide was also retrieved directly;
+the web reader could not open these pages. The VKCOM message object schema was checked
+and still declares 5.199. No API version or dependency change is made.
 
-## Delivery and failure semantics
-
-Long Poll failed=1 advances to the supplied ts and reports possible history loss.
-Failed=2 refreshes session credentials while keeping the previous cursor. Failed=3
-obtains both credentials and a new cursor. Recovery is iterative. Unexpected shapes
-or unknown failure codes fail visibly. Network failures, HTTP 429/5xx and VK error 6
-are retried only in the polling loop; authentication failures propagate. Delay caps
-are local retry policy, not claimed VK request limits.
-
-Callback requires the configured group and secret even for confirmation. Confirmation
-returns the configured code; ordinary success returns HTTP 200 with `ok`. Failures are
-not acknowledged as successful. Event deduplication is bounded, in-memory, and only
-records successful dispatch; it does not provide exactly-once side effects. See the
-[architecture](../architecture/project-architecture.md) for partial-failure limitations.
-
-Community tokens need the permissions for the selected methods. Bots cannot assume they
-may initiate conversations; VK permission/privacy errors are propagated without retries.
-Long Poll/Callback must be enabled and subscribed to relevant events in community settings.
-The event API version is configured there independently from the outbound request version.
-
-## Uncertainties and remaining work
-
-- The schema describes message_event.payload as a string; deployed integrations may use
-  JSON objects. The model intentionally preserves either form without automatic decoding.
-- Additional message and keyboard fields are retained, not fully validated. Keyboard accepts
-  typed text/callback/open-link/location buttons and raw VK action dictionaries;
-  raw actions are caller-controlled.
-- No schema generator is justified for the small current coverage.
-- Network-free regression tests cover button/event-answer serialization, validation,
-  HTTP Retry-After and existing behavior. Live integration is not run.
-  See [verification results](verification.md).
-- No automatic community provisioning, bulk sending, persistent state,
-  distributed deduplication, or durable event queue is provided.
+Text/callback actions require a label and accept a string payload. Typed button models
+encode dictionary/Pydantic payloads and emit the nested action plus color envelope.
+ButtonColor follows the guide's primary/secondary/positive/negative list; the schema
+uses default instead of secondary. This discrepancy is recorded rather than introducing
+an alias or claiming that both spellings are valid. Raw dictionaries remain unrestricted
+VK structures. At this review, numeric limits and live community delivery were
+unverified; no numeric validators or authenticated calls were introduced. Numeric
+validation is covered by the later [2026-11-16 review](#keyboard-limits-verification-2026-11-16). See [keyboards](keyboards.md).
 
 ## Media verification and uncertainties
 
@@ -245,20 +305,19 @@ content; it does not claim practical support for VK's maximum document size. The
 example is implemented but has not been run against VK. See [media API](media-api.md)
 for detailed contracts, published upload limits, source links and remaining verification.
 
-## Typed keyboard verification
+## Uncertainties and remaining work
 
-On **2026-11-02**, direct HTTPS retrieval of the official version history confirmed
-5.199 as its newest documented entry. The keyboard guide was also retrieved directly;
-the web reader could not open these pages. The VKCOM message object schema was checked
-and still declares 5.199. No API version or dependency change is made.
-
-Text/callback actions require a label and accept a string payload. Typed button models
-encode dictionary/Pydantic payloads and emit the nested action plus color envelope.
-ButtonColor follows the guide's primary/secondary/positive/negative list; the schema
-uses default instead of secondary. This discrepancy is recorded rather than introducing
-an alias or claiming that both spellings are valid. Raw dictionaries remain unrestricted
-VK structures. Numeric limits and live community delivery remain unverified; no new
-numeric validators or authenticated calls were introduced. See [keyboards](keyboards.md).
+- The schema describes message_event.payload as a string; deployed integrations may use
+  JSON objects. The model intentionally preserves either form without automatic decoding.
+- Additional message and keyboard fields are retained, not fully validated. Keyboard accepts
+  typed text/callback/open-link/location buttons and raw VK action dictionaries;
+  raw actions are caller-controlled.
+- No schema generator is justified for the small current coverage.
+- Network-free regression tests cover button/event-answer serialization, validation,
+  HTTP Retry-After and existing behavior. Live integration is not run.
+  See [verification results](verification.md).
+- No automatic community provisioning, bulk sending, persistent state,
+  distributed deduplication, or durable event queue is provided.
 
 ## Sources
 

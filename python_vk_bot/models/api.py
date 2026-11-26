@@ -51,6 +51,34 @@ class DocumentUpload(VKModel):
     file: str = Field(min_length=1, repr=False)
 
 
+class MessageSendResult(VKModel):
+    """Identifiers of one sent message; a global ID is not always available."""
+
+    peer_id: int = Field(strict=True)
+    message_id: int | None = Field(strict=True, gt=0)
+    conversation_message_id: int = Field(strict=True, gt=0)
+
+    @field_validator("peer_id")
+    @classmethod
+    def validate_peer_id(cls, value: int) -> int:
+        if value == 0:
+            raise ValueError("peer_id must be nonzero")
+        return value
+
+
+class _MessageSendError(VKModel):
+    code: int = Field(strict=True, gt=0)
+
+
+class _MessageSendResponse(VKModel):
+    """Recipient errors may carry zero or omitted message identifiers."""
+
+    peer_id: int = Field(strict=True)
+    message_id: int | None = Field(default=None, strict=True, ge=0)
+    conversation_message_id: int | None = Field(default=None, strict=True, ge=0)
+    error: _MessageSendError | None = Field(default=None, repr=False)
+
+
 class MessageDeleteError(VKModel):
     code: int = Field(strict=True)
 
