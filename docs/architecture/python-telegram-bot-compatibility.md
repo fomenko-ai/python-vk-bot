@@ -28,6 +28,16 @@ or message identifier assumptions are copied. No PTB implementation code is copi
 
 ## Message send results
 
+### Message lookup validation
+
+Reviewed on **2026-11-26** against stable **PTB 22.8** using the
+[Bot method reference](https://docs.python-telegram-bot.org/en/stable/telegram.bot.html).
+PTB has no equivalent lookup by VK peer and conversation-scoped message ID.
+Bot.get_message therefore retains VK's native identifiers and Message | None
+contract. Validation stays local to this method: strict response count and
+identifiers, confirmed absence only, and InvalidResponseError for unreliable
+responses. Shared Message conversion rules and transport behavior are unchanged.
+
 Rechecked on **2026-11-26** against stable **PTB 22.8**, identified by the
 [stable Bot documentation](https://docs.python-telegram-bot.org/en/stable/telegram.bot.html):
 

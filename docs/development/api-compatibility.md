@@ -26,7 +26,7 @@ Recheck the relevant sources before changing version-dependent behavior.
 | messages.delete | Bot.delete_message; one message_id or peer-scoped cmid; explicit recipient-side deletion |
 | photos.getMessagesUploadServer / photos.saveMessagesPhoto | Bot.upload_photo; multipart photo upload and typed saved attachment |
 | docs.getMessagesUploadServer / docs.save | Bot.upload_document; doc/audio_message upload and typed saved attachment |
-| messages.getByConversationMessageId | Bot.get_message; typed Message or None for an empty items list |
+| messages.getByConversationMessageId | Bot.get_message; typed Message or None only for count=0 and empty items; InvalidResponseError for unreliable responses |
 | messages.sendMessageEventAnswer | Bot.send_message_event_answer; ShowSnackbar or raw mapping, bool result |
 | users.get | Bot.get_user_info; typed User or None; optional profile fields |
 | groups.getLongPollServer | Bot.get_long_poll_server; secret key and typed cursor |
@@ -57,6 +57,25 @@ Recheck the relevant sources before changing version-dependent behavior.
   validation and is excluded from the dispatched Update. Unknown fields are retained.
 
 ## Messaging contracts
+
+Lookup validation sources rechecked on **2026-11-26**:
+the official [messages response schema](https://github.com/VKCOM/vk-api-schema/blob/master/messages/responses.json)
+declares version **5.199**, with required integer count and message items;
+the [schema package](https://github.com/VKCOM/vk-api-schema/blob/master/package.json)
+reports **5.199.99**. The implementation target stays 5.199. The single-result
+consistency and exact-identifier checks are library safeguards. This check did
+not establish whether a newer API version exists beyond the published schema;
+no live or authenticated VK requests were made.
+
+- `Bot.get_message` requires a nonzero integer peer_id and a positive integer
+  conversation_message_id (excluding bool); invalid inputs raise ValueError before
+  HTTP. Response count must be an integer 0 or 1 matching the items length.
+  The returned peer_id and conversation_message_id must be integers matching the
+  request; strings, bools and floats are rejected for these three response fields.
+  Other Message fields retain their existing Pydantic conversions and extra fields.
+  Only count=0 with empty items returns None. InvalidResponseError reports an
+  unreliable response without including response contents. API/network errors
+  propagate unchanged, with no retries or fallback requests.
 
 - Generated random_id values are nonzero positive int32 integers. Callers can provide a stable
   nonzero signed int32 ID; no message sends are automatically retried.
