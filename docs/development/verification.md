@@ -1,5 +1,44 @@
 # Verification
 
+## HTTP transport safeguards and migration skill transfer (2026-11-26)
+
+Target: compat/py39, base `1074000`. Sources:
+`7e56db9a7d8962759d950356c9863cf214dc0408` and
+`f3e4d7c938dea56a92805befcbd619a5c995de8a` from main. The user requested a visible
+branch switch and no commit; changes were applied selectively in the shared checkout.
+The source behavior and regression approvals were reused for equivalent safeguards.
+
+Transferred sanitized Long Poll URL parsing and 24 applicable transport regressions,
+using HTTPX and the Python 3.9-compatible three-argument traceback formatter.
+The explicit S113 suppression is limited to the MockTransport client in the timeout
+precedence test, whose purpose is to verify that real request timeouts are applied.
+No runtime timeout or TLS verification is disabled.
+
+Also transferred the clarification rule, branch-aware HTTP client guidance and bundled
+skill reference updates, adapted to this branch's 0.8.1/Python 3.9+/HTTPX baseline.
+At the user's request, changelog entries are grouped under 0.8.1 (2026-11-26).
+No version, date, dependency metadata or lockfile change was made. The complete exclusions and rationale are in the
+[compatibility guide](python-compatibility.md#http-transport-and-bundled-skill-transfer-2026-11-26).
+In particular, no HTTPX2 dependency or invalid-Location fix was simulated in HTTPX.
+
+| Check | Result |
+| --- | --- |
+| `uv sync --locked --all-extras` | Passed using target lockfile |
+| Focused transport/Long Poll suite on Python 3.14.4 | 78 passed |
+| `uv run ruff check .` | Passed |
+| `uv run ruff format --check .` | Passed, 79 files |
+| `uv run ty check` | Passed with configured Python 3.9 target |
+| `uv run pytest --strict-markers` on Python 3.14.4 | 498 passed |
+| `run_python_compatibility.sh` on Python 3.9–3.14 | Passed, 23 production sources each |
+| `run_runtime_compatibility.sh` on Python 3.9–3.14 | Passed, 498 tests on each interpreter |
+| Wheel and sdist build in /tmp | Passed; reference bytes match branch source |
+| Embedded skill examples | Compiled/imported without running bots |
+| `git diff --check` | Passed |
+
+Checked runtimes: 3.9.25, 3.10.20, 3.11.15, 3.12.13, 3.13.14, 3.14.4.
+No live VK calls, credentials, external service tests, staging, commit, push, tag or
+publication. A future user-created commit should include both source SHAs in its body.
+
 ## Message lookup validation transfer (2026-11-26, production stage)
 
 Source main commit `fbabd118098be5e0f1cc50d9c4c3610885730545` is selectively

@@ -284,7 +284,11 @@ class HTTPTransport:
         return payload
 
     async def poll(self, server: str, *, key: SecretStr, ts: str, wait: int) -> JsonValue:
-        url = httpx.URL(server)
+        try:
+            urlsplit(server)
+            url = httpx.URL(server)
+        except (httpx.InvalidURL, ValueError):
+            raise InvalidResponseError("Invalid Long Poll server URL") from None
         if url.scheme != "https" or not url.host or url.userinfo or url.query or url.fragment:
             raise InvalidResponseError("Unexpected Long Poll server URL")
         # The community token is only sent to api.vk.ru, never to the polling server.

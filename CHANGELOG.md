@@ -11,6 +11,14 @@ All notable changes will be documented here, following Keep a Changelog.
 - `Bot.get_message` returns `None` only for confirmed absence and raises
   `InvalidResponseError` for malformed counts or mismatched message identifiers.
   Invalid input identifiers raise `ValueError` before any HTTP request.
+- Invalid Long Poll server URLs raise sanitized `InvalidResponseError` without
+  exposing URL contents or sending a request.
+
+### Changed
+
+- Update the bundled `telegram-to-vk` migration reference for this compatibility
+  branch, covering HTTPX client injection, media operations, typed buttons,
+  message identifiers, internal events and application lifecycle.
 
 ## 0.8.0 - 2026-11-26
 

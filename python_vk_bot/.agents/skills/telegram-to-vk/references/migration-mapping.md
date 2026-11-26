@@ -1,6 +1,6 @@
 # Telegram to VK migration mapping
 
-Baseline inspected on **2026-10-31**: python-vk-bot **0.1.0** source tree and
+Baseline inspected on **2026-11-26**: python-vk-bot **0.8.1** compat/py39 source tree and
 [PTB 22.8](https://docs.python-telegram-bot.org/en/v22.8/telegram.ext.html).
 Inspect the user's actual installed versions before applying this mapping. This file travels
 with the Python package and does not require repository documentation to be installed.
@@ -12,28 +12,103 @@ with the Python package and does not require repository documentation to be inst
 | Application / ApplicationBuilder | `Application(bot, group_id)` | Direct construction; no builder. `run_polling()` must be awaited. |
 | Bot | `Bot(token, api_version=..., timeout=...)` | Community token; async context manager; methods use VK identifiers. |
 | Configuration | `BotSettings()` | Reads VK_TOKEN and VK_GROUP_ID; optional explicit dotenv loading. Pass values to constructors. |
-| Update | `Update.message`, `Update.message_event`, `Update.object` | VK events; unknown objects retained. No effective_message/chat aliases. |
-| CallbackContext | `Context` | user_data, peer_data, bot_data; process-local state, no chat_data or args. |
+| Update | `Update.message`, `Update.message_event`, `Update.donut_subscription`, `Update.object` | VK events; unknown objects retained. No effective_message/chat aliases. |
+| CallbackContext | `Context` | user_data, peer_data, bot_data and event; process-local state, no chat_data or args. |
 | CommandHandler | `CommandHandler("start", callback)` | Exact /start token; no Telegram mention parsing. Parse arguments explicitly. |
 | MessageHandler | `MessageHandler(callback, predicate=...)` | Callback comes first; only message-bearing updates. |
-| filters | `filters.ALL`, `TEXT`, `LOCATION`, `Regex`, `Filter` | Small synchronous subset; supports &, \| and ~. No COMMAND filter. |
+| filters | `filters.ALL`, `TEXT`, `LOCATION`, `Regex`, `Filter`, `DONUT_SUBSCRIPTION*` | Small synchronous subset; supports &, \| and ~. No COMMAND filter. |
 | CallbackQueryHandler | `MessageEventHandler(callback, predicate=...)` | Handles VK message_event; payload shape and answer identifiers differ. |
+| TypeHandler | `TypeHandler(event_type, callback, strict=False)` | Routes Python objects, including Update; subclass matching unless strict=True. |
+| Custom events / background results | `Application.update_queue`, `process_update`, `create_task` | One serial queue; worker results need no fabricated VK Update. |
+| ApplicationHandlerStop | `ApplicationHandlerStop` | Stops remaining handler groups for the current event. |
 | ConversationHandler | No built-in equivalent | Explicit state transitions in the bot project; design persistence if required. |
 | JobQueue | No built-in scheduler | Reuse an existing scheduler or propose one; manage task lifetime explicitly. |
 | Persistence | No built-in backend | In-memory context does not survive restart; adapt the application's storage. |
-| Error callbacks | `Application.add_error_handler(callback)` | Async `(update, context)`; update may be None, exception is context.error; errors propagate. |
+| Error callbacks | `Application.add_error_handler(callback)` | Async `(event, context)`; event may be a VK Update, internal object or None; exception is context.error; errors propagate. |
 | Updater / webhook delivery | `LongPoll` / `Callback` | Different VK delivery/acknowledgement semantics; choose one mode per Application. |
-| Inline/reply keyboard | `Keyboard(buttons=..., inline=...)` | VK action dictionaries, not Telegram button objects. |
+| Inline/reply keyboard | `Keyboard(buttons=..., inline=...)` | Typed TextButton, CallbackButton, OpenLinkButton and LocationButton, or raw VK action dictionaries. |
 | send_message / reply_text | `Bot.send_message(peer_id, text, ...)` | Returns an integer ID; Message has no reply_text method. |
+| Send result identifiers | `Bot.send_message_and_get_ids` / `Bot.forward_message_and_get_ids` | Return MessageSendResult with destination peer_id, optional global message_id and conversation_message_id; not a complete Message. |
 | Edit / forward | `Bot.edit_message` / `Bot.forward_message` | Explicit peer and correct identifier scope; forwarding uses the source peer. |
-| Media / deletion | Attachment references supported; no upload/delete wrappers | Do not promise uploads or delete_message; raw Bot.request needs separately verified VK methods. |
+| Media uploads | `Bot.upload_photo` / `Bot.upload_document` | Upload/save without sending; document type is doc or audio_message. No generic Telegram file-ID conversion. |
+| Replace media / delete | `Bot.edit_message_media` / `Bot.delete_message` | Photo replacement or deletion by explicit peer and exactly one identifier; no fallback send. |
+| Button notification | `ShowSnackbar(text=...)` | Pass as event_data to send_message_event_answer; raw mappings also accepted. |
+| Donation subscription events | `DonutSubscriptionHandler(callback, event_types=...)` | VK-specific; validate the actual constructor and configured event types. |
 
 For implementation details inspect the installed package's `__init__.py`, `application.py`,
-`handlers.py`, `context.py`, `filters.py`, `bot.py`, `models/` and `callback.py`.
+`handlers.py`, `context.py`, `filters.py`, `bot.py`, `models/`, `queues.py`,
+`transport.py` and `callback.py`.
+
+## Message identifiers, media and buttons
+
+Use send_message_and_get_ids when later edits require a conversation-scoped ID.
+MessageSendResult.message_id may be None; do not substitute the conversation ID as a
+global ID. forward_message_and_get_ids takes from_peer_id and conversation_message_id
+for the source and returns identifiers of the new destination message. Ordinary
+send_message and forward_message retain their integer result. get_message takes a
+peer and conversation_message_id, returns Message or None for confirmed absence,
+and raises InvalidResponseError for malformed or mismatched responses.
+
+upload_photo and upload_document accept bytes, pathlib.Path or a binary file. A string
+path is not a local-file input. Uploads buffer files in memory; borrowed files remain
+open and are read from their current position. Upload/save/send/edit are separate
+operations, with no transactional cleanup or automatic fallback. Saved attachments
+can be sent later. Message.attachments retains raw dictionaries; typed_attachments
+provides parsed views while preserving unknown attachment kinds.
+
+edit_message_media accepts a local photo input, PhotoAttachment or VK photo identifier;
+saved photos skip upload. Set caption and keyboard explicitly when their desired
+values matter; omitted fields do not imply a fetch/merge preservation guarantee.
+delete_message returns bool and defaults delete_for_all to False. Permissions and
+server-side restrictions still apply.
+
+Keyboard supports mixed typed buttons and raw VK dictionaries. ButtonColor and
+ButtonType are VK enums. Validation includes keyboard dimensions, action row rules,
+and known label lengths; inspect the installed limits module and models instead of
+copying Telegram limits. ShowSnackbar is an outgoing action, not a callback query.
+
+## Internal events and managed tasks
+
+Application.update_queue is a producer facade, not a general asyncio.Queue: put and
+put_nowait enqueue without waiting for dispatch; there is no public get/join.
+process_update enqueues and awaits dispatch and must not be called recursively from
+a handler. For internal objects, user_id and peer_id explicitly select state scopes;
+Context.event retains the dispatched object. TypeHandler receives that object directly.
+The bounded queue raises QueueFull rather than blocking an active handler on capacity.
+
+Use Application.create_task only while running. Send results through the event queue
+instead of mutating Context state in workers. Finite tasks are awaited during stop;
+mark long-lived workers cancel_on_stop=True. Do not await a managed task from a handler
+if that task depends on dispatcher progress, including its queued error callback.
+This is task ownership, not a scheduler or a persistence layer.
+
+Lifecycle hooks are post_init, post_stop and post_shutdown. shutdown orchestrates stop,
+post_stop while Bot is available, HTTP cleanup and post_shutdown. Direct stop does not
+invoke post_stop. Let the runner/context owner perform shutdown when a handler calls
+stop. Await cancellation and cleanup before releasing borrowed resources.
+
+## HTTP client boundary
+
+On compat/py39, Bot(..., client=...) accepts httpx.AsyncClient on every supported
+Python version. Create MockTransport, ASGITransport, exceptions and URL objects from
+httpx. Main 0.9.0 uses HTTPX2 with distinct classes; determine the installed branch and
+version rather than selecting the HTTP library from the interpreter alone. Do not
+install process-wide import aliases from a library.
+
+The caller closes injected clients; owned clients are reused and closed on shutdown.
+Request timeouts and disabled redirects are applied by HTTPTransport per request.
+Configure custom CA contexts, proxies, connection limits or optional HTTP/2 on an
+injected client without disabling TLS verification. HTTPX uses certifi by default;
+environment CA/proxy handling is controlled by trust_env. Logger names are httpx and
+httpcore.*. Standard HTTPX request logs have query redaction, but custom hooks,
+transports and telemetry must not expose credentials or message payloads.
+
+The example below targets compat/py39 on Python >=3.9. HTTP client identity does not
+determine architectural compatibility with PTB.
 
 ## Working command and message example
 
-Run with Python 3.14 and VK_TOKEN/VK_GROUP_ID configured. Enable community messaging, Bots
+Run with Python 3.9+ and VK_TOKEN/VK_GROUP_ID configured. Enable community messaging, Bots
 Long Poll and message_new first. This example replies only to received messages.
 
 ```python

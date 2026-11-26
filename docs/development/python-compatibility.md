@@ -5,7 +5,7 @@
 and other Python implementations have not been verified. The default contributor
 interpreter remains Python 3.14.
 
-The library installs, imports and passes all 474 regression tests on the checked
+The library installs, imports and passes all 498 regression tests on the checked
 3.9–3.14 interpreters. Before the media API transfer, both base wheel installation and sdist installation with the
 Callback extra were also checked in clean Python 3.9 consumer environments.
 See [exact results and reproduction commands](verification.md).
@@ -45,6 +45,30 @@ contributor environments, not a constraint imposed on downstream users. For repr
 Git installations, select a reviewed commit or release tag and lock the consumer project.
 Installing the branch and main into the same environment does not provide two independent
 libraries: they have the same distribution and import names.
+
+## HTTP transport and bundled skill transfer (2026-11-26)
+
+Selectively transferred main commits
+`7e56db9a7d8962759d950356c9863cf214dc0408` and
+`f3e4d7c938dea56a92805befcbd619a5c995de8a`:
+
+- Invalid Long Poll URL parsing raises sanitized InvalidResponseError, including
+  malformed bracketed hosts before HTTPX normalization.
+- Applicable transport ownership, timeout, logging/error secrecy and ordinary
+  redirect regressions use HTTPX and Python 3.9-compatible traceback formatting.
+- The bundled migration skill describes the current 0.8.1 compatibility branch,
+  including media, typed buttons, identifiers and internal event/task lifecycle.
+- The clarification rule and branch-aware HTTP client guidance are retained.
+
+HTTPX >=0.28,<1 remains the HTTP client on every supported interpreter. No conditional
+HTTPX2 dependency, new client type check or public signature change is introduced.
+Main's HTTPX2 imports, TLS/logging defaults, dependency files, decision 0005 and
+release version 0.9.0 are excluded. Tests for HTTPX2's invalid-Location handling are
+also excluded: that upstream behavior is not provided by HTTPX 0.28.1. Ordinary
+redirects remain disabled and covered. Version 0.8.1 and its date are unchanged;
+new changelog entries are grouped under 0.8.1 at the user's request.
+No commit or publication is implied.
+See the [dated verification results](verification.md).
 
 ## Runtime choices
 

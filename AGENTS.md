@@ -6,6 +6,7 @@ These rules apply to AI-assisted changes in `python-vk-bot`, a Python framework 
 2. **Change tests only after the user has approved the changes in the main project code.** Preserve this approval gate to avoid unnecessary work and token usage. You may inspect existing tests and propose test changes before approval, but do not edit them.
 3. Delete `*/__pycache__` directories only after an explicit user request.
 4. Prefer focused changes over broad rewrites. Do not implement proposed architecture without approval when rule 1 applies.
+5. If information is insufficient, questions arise, or implementation or architecture admits multiple interpretations, stop and ask the user for clarification before proceeding.
 
 ## Architecture and python-telegram-bot Compatibility
 
@@ -40,7 +41,7 @@ The project aims for a developer experience conceptually consistent with `python
 4. Use `pathlib.Path` for filesystem paths.
 5. Keep runtime dependencies in `[project].dependencies`, optional feature dependencies in `[project.optional-dependencies]`, and development tools in the configured development dependency group.
 6. Use uv for dependency management when configured by the project. Keep packaging metadata and lockfiles consistent.
-7. Prefer a reusable async HTTP client (evaluate `httpx.AsyncClient` and `aiohttp`), injectable where useful for tests. Reuse connections, configure timeouts, and close owned resources reliably. Avoid synchronous `requests` in asynchronous execution paths.
+7. Prefer a reusable async HTTP client (use `httpx2.AsyncClient` on main; retain HTTPX on `compat/py39`), injectable where useful for tests. Reuse connections, configure timeouts, and close owned resources reliably. Avoid synchronous `requests` in asynchronous execution paths.
 8. Use Pydantic v2 deliberately at API boundaries; do not build redundant models or validate the same data unnecessarily.
 
 ## Tests and Resource Lifecycle
