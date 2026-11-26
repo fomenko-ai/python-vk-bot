@@ -12,6 +12,9 @@ All notable changes will be documented here, following Keep a Changelog.
   must use HTTPX2 types. TLS uses the operating system trust store by default;
   request logging uses `httpx2` and `httpcore2.*`. See the
   [migration guide](docs/development/httpx2-migration.md).
+- Update the bundled `telegram-to-vk` migration reference for version 0.9.0,
+  covering HTTPX2 client injection, media operations, typed buttons, message
+  identifiers, internal events and application lifecycle.
 
 ## 0.8.1 - 2026-11-26
 
